@@ -5,7 +5,7 @@ import datetime as dt
 from Functions.DataPreparation import WorkTable as wt
 import numpy as np
 
-
+#To be deleted
 def prepare_base_data(path,
                   stats=False,
                   base_data=False,
@@ -69,6 +69,7 @@ def prepare_base_data(path,
     return work_table_new, sensor_data_new
 
 
+#To be deleted
 def filter_sensor_data(work_table, sensor_data):
     filtered_data = pd.DataFrame()
     for _, row in work_table.iterrows():
@@ -85,6 +86,7 @@ def filter_sensor_data(work_table, sensor_data):
     return filtered_data
 
 
+#To be deleted
 def get_sensor_data_breaks(sensor_data):
     sensor_data.loc[:, 'weekday'] = sensor_data.loc[:, 'Date'].apply(lambda x: dt.datetime.strftime(x, '%A')).copy()
     condition = \
@@ -104,6 +106,7 @@ def get_sensor_data_breaks(sensor_data):
     return sensor_data_breaks
 
 
+# To be deleted
 def initial_fix(work_table, sensor_data, fix_duplicates=False):
     sensor_data = filter_sensor_data(work_table, sensor_data)
     sensor_data['Indgang 0101'] = abs(sensor_data['Indgang 0101'] - 1)
@@ -114,6 +117,7 @@ def initial_fix(work_table, sensor_data, fix_duplicates=False):
     return sensor_data
 
 
+#To be deleted
 def set_first_and_last_row_to_zero(sensor_data):
     """
     First and last indices of Indgang 0101 are set to 0
@@ -123,6 +127,7 @@ def set_first_and_last_row_to_zero(sensor_data):
     return sensor_data
 
 
+#To be deleted
 def calc_on_off_data(sensor_data):
     sensor_data[['next_0101', 'next_Date']] = sensor_data[['Indgang 0101', 'Date']].shift(-1)
     sensor_data = calc_single_row_0101_duration(sensor_data)
@@ -130,6 +135,7 @@ def calc_on_off_data(sensor_data):
     return sensor_data
 
 
+#To be deleted
 def calc_single_row_0101_duration(sensor_data):
     condition = (sensor_data['next_0101'] == 0) \
                 & (sensor_data['previous_0101'] == 0) \
@@ -143,6 +149,7 @@ def calc_single_row_0101_duration(sensor_data):
     return sensor_data
 
 
+#To be deleted
 def calc_multi_row_0101_duration(sensor_data):
     condition = (sensor_data['Indgang 0101'] == 1) \
                 & (sensor_data['previous_0101'] == 1) \
@@ -175,6 +182,7 @@ def calc_multi_row_0101_duration(sensor_data):
     return sensor_data
 
 
+#To be deleted
 def calc_group_pace(dates, future=False):
     if future:
         times = dates['next_Date'] - dates['Date']
@@ -183,6 +191,7 @@ def calc_group_pace(dates, future=False):
     return times.dt.total_seconds().fillna(0).astype(int)
 
 
+#To be deleted
 def add_column(parent, child, col, child_col=None, fillna=True, indices=None):
     parent_col = col
     if not isinstance(child_col, str):
@@ -200,6 +209,7 @@ def add_column(parent, child, col, child_col=None, fillna=True, indices=None):
     return parent
 
 
+# To be deleted
 def fix_0103(sensor_data, keep=True):
     """
     Remove duplicate readings in the Indang 0103 column caused by a sensor
@@ -225,6 +235,7 @@ def fix_0103(sensor_data, keep=True):
     return sensor_data
 
 
+#To be deleted
 def create_unique_id(data, column_name):
     """
     adds a column to the sensor data containing unique identifiers for either
@@ -236,6 +247,7 @@ def create_unique_id(data, column_name):
     )
 
 
+#To be deleted
 def convert_non_unique_identifier_into_unique(sensor_data,
                                               odd_or_even_column,
                                               odd_and_even_column,
@@ -257,6 +269,7 @@ def convert_non_unique_identifier_into_unique(sensor_data,
                                 )
 
 
+#To be deleted
 def return_even_or_odd_groups(column, output_column, sensor_data, even=True):
     """
     returns either all the odd or even numbered cum-counted groups in a JOBNUM
@@ -274,6 +287,7 @@ def return_even_or_odd_groups(column, output_column, sensor_data, even=True):
     return sensor_data
 
 
+#To be deleted
 def single_non_duplicate(column_num, sensor_data):
     if f'previous_010{column_num}' not in sensor_data.columns:
         groupby = sensor_data.groupby('JOBNUM')
@@ -286,6 +300,7 @@ def single_non_duplicate(column_num, sensor_data):
     return create_non_duplicate(sensor_data, groupby, first, column_num)
 
 
+#To be deleted
 def create_non_duplicate(sensor_data, groupby, first, column_num):
     indices = groupby.apply(_non_duplicates, f'Indgang 010{column_num}')
     column = f'Non Duplicate 010{column_num}'
@@ -300,6 +315,7 @@ def create_non_duplicate(sensor_data, groupby, first, column_num):
     return sensor_data
 
 
+#To be deleted
 def _non_duplicates(sensor_data, column):
     condition = (sensor_data[column] == 1) \
                 & (sensor_data[f'previous_{column[-4:]}'] == 0)
@@ -308,6 +324,7 @@ def _non_duplicates(sensor_data, column):
     return pd.Series(indices.index)
 
 
+#To be deleted
 def make_column_2_levels(sensor_data,
                          group_column,
                          non_duplicate_column,
@@ -341,6 +358,7 @@ def make_column_2_levels(sensor_data,
     return data
 
 
+#To be deleted
 def slice_data(sensor_data, column, mask=None):
     """
     returns a slice of sensor data based on a condition
@@ -353,6 +371,7 @@ def slice_data(sensor_data, column, mask=None):
     return sensor_data
 
 
+#To be deleted
 def _gen_first_and_last(data):
     data['Duplicated Index'] = data.index
     first = data.groupby('JOBNUM').first().set_index('Duplicated Index', drop=True)
@@ -365,6 +384,7 @@ def _gen_first_and_last(data):
     return first.index, first_and_last
 
 
+#To be deleted
 def get_base_dolle_directory():
     path = os.getcwd()
     if path.split('/')[-1].lower() != 'dolle':
@@ -378,6 +398,7 @@ def get_base_dolle_directory():
     return path
 
 
+#To be deleted
 def make_column_arange(first_slice, target_column, groupby_col=None, fill='bfill'):
     first_slice = first_slice.copy()
     condition = first_slice[target_column] != 0

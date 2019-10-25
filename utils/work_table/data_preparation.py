@@ -1,10 +1,114 @@
 import pandas as pd
 import numpy as np
+
 from load_data import load_csv
+from utils import utils
 
 
-# To be deleted
-def clean_work_table(work_table, stats):
+class CleanerThreeMainLadders:
+    """
+    removes duplicated rows, splits rows where breaks occurred and filters the work table
+    to contain only the three most popular types of ladder
+    """
+    def __init__(self):
+        self.work_table = None
+        self.stats = False
+
+    def filter(self):
+        self.work_table = filter_work_table(self.work_table, reg_ex=r'^SW|^CF')
+        self.work_table = add_columns(self.work_table)
+        self.work_table = utils.get_dummy_products(self.work_table)
+        condition = (self.work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) | \
+                    (self.work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) | \
+                    (self.work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1)
+        self.work_table = self.work_table.loc[condition, :]
+
+    def clean(self):
+        self.work_table = _remove_complete_duplicates(self.work_table)
+        self.work_table = _remove_diff_jobref_overlaps(self.work_table)
+        self.work_table = _remove_complete_overlaps(self.work_table)
+        self.work_table = _remove_top_heavy_overlaps(self.work_table, self.stats)
+        self.work_table = _remove_bottom_heavy_overlaps(self.work_table, self.stats)
+        self.work_table = _remove_partial_overlaps(self.work_table, self.stats)
+        return self.work_table
+
+    def remove_breaks(self, sensor_data, breaks):
+        return remove_breaks(breaks, self.work_table, sensor_data, self.stats)
+
+
+class CleanWorkTable:
+    """
+    Generic class for removing duplicated rows, removing breaks and filtering for different
+    product types
+    """
+    def __init__(self, path, columns, stats, cleaner):
+        self._path = path
+        self._columns = columns
+        self._cleaner = cleaner
+        self._cleaner.stats = stats
+
+    def prep_work_table(self):
+        self._cleaner.work_table = load_csv.work_table(self._path, self._columns)
+        self._cleaner.filter()
+        self._cleaner.clean()
+        self._cleaner.work_table.reset_index(drop=True, inplace=True)
+
+        current_columns = ['StopDateTime', 'StartDateTime']
+        next_columns = ['f_StopDateTime', 'f_StartDateTime']
+        self._cleaner.work_table.drop(next_columns, axis=1, inplace=True)
+        self._cleaner.work_table[next_columns] = self._cleaner.work_table[current_columns].shift(-1)
+        return self._cleaner.work_table
+
+    def remove_breaks(self, sensor_data, breaks):
+        return self._cleaner.remove_breaks(breaks, sensor_data).sort_values('StartDateTime').reset_index(drop=True)
+
+
+def prep_work_table(csv, columns, stats):
+    work_table_original = load_csv.work_table(csv, columns)
+    work_table = work_table_original.copy(deep=True)
+    count = 0
+    while True:
+        if count < 10:
+            work_table = prepare_work_table(work_table)
+            work_table = _clean_work_table(work_table, stats=stats)
+            work_table = filter_work_table(work_table, reg_ex=r'^SW|^CF')
+
+            work_table.reset_index(drop=True, inplace=True)
+            work_table.drop(['f_StopDateTime', 'f_StartDateTime'], axis=1, inplace=True)
+            work_table[['f_StopDateTime', 'f_StartDateTime']] = work_table[['StopDateTime', 'StartDateTime']].shift(-1)
+
+            condition = (work_table['StopDateTime'] == work_table['f_StopDateTime'])
+            wrong = work_table.loc[condition]
+            count += 1
+            if len(wrong) == 0:
+                break
+        else:
+            raise Exception('Problem With work_table cleaning')
+    return work_table
+
+
+def filter_work_table(work_table, reg_ex):
+    filtered = _filter_work_table_by_work_id(work_table, reg_ex)
+    filtered = filtered.loc[~filtered.index.duplicated(keep='first')]
+    filtered['JOBNUM'] = np.arange(len(filtered.index))
+    return filtered
+
+
+def _filter_work_table_by_work_id(work_table, reg_ex):
+    return work_table.loc[work_table['NAME'].str.contains(reg_ex, regex=True), :]
+
+
+def add_columns(work_table):
+    work_table.sort_values('StartDateTime', inplace=True)
+    work_table = work_table.loc[work_table['WRKCTRID'] == 1405, :]
+    work_table = work_table.reset_index(drop=True)
+    next_columns = ['f_StartDateTime', 'f_StopDateTime', 'f_QTYGOOD', 'f_JOBREF', 'f_NAME']
+    original_columns = ['StartDateTime', 'StopDateTime', 'QTYGOOD', 'JOBREF', 'NAME']
+    work_table[next_columns] = work_table[original_columns].shift(-1)
+    return work_table
+
+
+def _clean_work_table(work_table, stats):
     work_table = _remove_complete_duplicates(work_table)
     work_table = _remove_diff_jobref_overlaps(work_table)
     work_table = _remove_complete_overlaps(work_table)
@@ -14,17 +118,6 @@ def clean_work_table(work_table, stats):
     return work_table
 
 
-#To be deleted
-def _remove_jobrefs(worktable, data_slice):
-    job_refs = data_slice['JOBREF']
-    f_job_refs = data_slice['f_JOBREF']
-    erroneous_jobs = pd.concat([job_refs, f_job_refs])
-    erroneous_jobs = set(erroneous_jobs)
-    worktable = worktable.loc[~worktable['JOBREF'].isin(erroneous_jobs), :].reset_index(drop=True)
-    return worktable
-
-
-#To be deleted
 def _remove_complete_duplicates(work_table):
     work_table = work_table.loc[~work_table[['JOBREF',
                                              'QTYGOOD',
@@ -37,7 +130,6 @@ def _remove_complete_duplicates(work_table):
     return work_table
 
 
-#To be deleted
 def _remove_diff_jobref_overlaps(work_table):
     diff_jobrefs = work_table[
         # partial overlap
@@ -64,7 +156,15 @@ def _remove_diff_jobref_overlaps(work_table):
     return _remove_jobrefs(work_table, diff_jobrefs)
 
 
-#To be deleted
+def _remove_jobrefs(worktable, data_slice):
+    job_refs = data_slice['JOBREF']
+    f_job_refs = data_slice['f_JOBREF']
+    erroneous_jobs = pd.concat([job_refs, f_job_refs])
+    erroneous_jobs = set(erroneous_jobs)
+    worktable = worktable.loc[~worktable['JOBREF'].isin(erroneous_jobs), :].reset_index(drop=True)
+    return worktable
+
+
 def _remove_complete_overlaps(work_table):
     complete_overlaps = work_table[
         (work_table['StartDateTime'] == work_table['f_StartDateTime'])
@@ -75,7 +175,6 @@ def _remove_complete_overlaps(work_table):
     return work_table
 
 
-#To be deleted
 def _remove_top_heavy_overlaps(work_table, stats=True):
     # REMOVE TOP HEAVY OVERLAPS WHERE QTYGOOD == 0 AND f_QTYGOOD >= 0
     top_heavy_overlaps = work_table[
@@ -106,19 +205,6 @@ def _remove_top_heavy_overlaps(work_table, stats=True):
     return work_table
 
 
-#To be deleted
-def _remove_n_plus_1_index_and_set_column(work_table, data_slice, columns):
-    indices = data_slice.index
-    f_indices = indices + 1
-    for key in columns.keys():
-        column = columns[key]['column']
-        f_column = columns[key]['f_column']
-        work_table.loc[indices, column] = work_table.loc[indices, f_column]
-    work_table = work_table[~work_table.index.isin(f_indices)]
-    return work_table
-
-
-#To be deleted
 def _remove_bottom_heavy_overlaps(work_table, stats=True):
     bottom_heavy_overlaps = work_table[
         (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
@@ -160,17 +246,17 @@ def _remove_bottom_heavy_overlaps(work_table, stats=True):
     return work_table
 
 
-# To be deleted
-def _apply_condition_partial(work_table, partial_overlaps, payload_dict):
-    work_table = _remove_n_plus_1_index_and_set_column(
-        work_table,
-        partial_overlaps,
-        payload_dict
-    )
+def _remove_n_plus_1_index_and_set_column(work_table, data_slice, columns):
+    indices = data_slice.index
+    f_indices = indices + 1
+    for key in columns.keys():
+        column = columns[key]['column']
+        f_column = columns[key]['f_column']
+        work_table.loc[indices, column] = work_table.loc[indices, f_column]
+    work_table = work_table[~work_table.index.isin(f_indices)]
     return work_table
 
 
-#To be deleted
 def _remove_partial_overlaps(work_table, stats=True):
     """STILL NEED TO DECIDE WHAT TO DO"""
     payload_1 = {'column': 'QTYGOOD', 'f_column': 'f_QTYGOOD'}
@@ -208,9 +294,16 @@ def _remove_partial_overlaps(work_table, stats=True):
     return work_table
 
 
-#To be deleted
-def fix_work_table(breaks, original_work_table, sensor_data, stats):
-    work_table = original_work_table.copy(deep=True)
+def _apply_condition_partial(work_table, partial_overlaps, payload_dict):
+    work_table = _remove_n_plus_1_index_and_set_column(
+        work_table,
+        partial_overlaps,
+        payload_dict
+    )
+    return work_table
+
+
+def remove_breaks(breaks, work_table, sensor_data, stats):
     condition = work_table['JOBNUM'].isin(breaks['JOBNUM'])
     work_table_breaks = work_table.loc[condition].copy(deep=True)
     work_table_breaks = work_table_breaks.sort_values('JOBNUM').reset_index(drop=True)
@@ -237,8 +330,8 @@ def fix_work_table(breaks, original_work_table, sensor_data, stats):
 
     condition = sensor_data['0101 Group'].isin(multi_row_breaks['0101 Group'])
     multi_row_breaks = sensor_data[condition].copy()
-    before_break_finish = get_date(multi_row_breaks.copy(), 'Date', 'last')
-    after_break_start = get_date(multi_row_breaks.copy(), 'next_Date', 'last')
+    before_break_finish = _get_date(multi_row_breaks.copy(), 'Date', 'last')
+    after_break_start = _get_date(multi_row_breaks.copy(), 'next_Date', 'last')
 
     work_table_multis = work_table_breaks.loc[work_table_breaks['JOBNUM'].isin(multi_row_breaks['JOBNUM'])]
     work_table = work_table.loc[~work_table['JOBNUM'].isin(work_table_multis['JOBNUM'])]
@@ -248,44 +341,11 @@ def fix_work_table(breaks, original_work_table, sensor_data, stats):
     work_table = pd.concat([work_table, multi_row_breaks_fixed])
     work_table = work_table.sort_values('StartDateTime').reset_index(drop=True)
 
-    work_table = clean_work_table(work_table, stats=stats)
-    work_table = create_jobnums(work_table)
-    return work_table, multi_row_breaks_fixed, single_row_breaks_fixed
-
-
-#To be deleted
-def prep_work_table(csv, columns, stats):
-    work_table_original = load_csv.work_table(csv, columns)
-    work_table = work_table_original.copy(deep=True)
-    count = 0
-    while True:
-        if count < 10:
-            work_table = prepare_work_table(work_table)
-            work_table = clean_work_table(work_table, stats=stats)
-            work_table = filter_work_table(work_table, reg_ex=r'^SW|^CF')
-
-            work_table.reset_index(drop=True, inplace=True)
-            work_table.drop(['f_StopDateTime', 'f_StartDateTime'], axis=1, inplace=True)
-            work_table[['f_StopDateTime', 'f_StartDateTime']] = work_table[['StopDateTime', 'StartDateTime']].shift(-1)
-
-            condition = (work_table['StopDateTime'] == work_table['f_StopDateTime'])
-            wrong = work_table.loc[condition]
-            count += 1
-            if len(wrong) == 0:
-                break
-        else:
-            raise Exception('Problem With work_table cleaning')
+    work_table = _clean_work_table(work_table, stats=stats)
+    work_table = _create_jobnums(work_table)
     return work_table
 
 
-#To be deleted
-def get_date(multi_row_breaks, column, function):
-    agg_dict = {column: function}
-    dates = multi_row_breaks.groupby('0101 Group').agg(agg_dict)
-    return dates
-
-
-#To be deleted
 def _fix_breaks(work_table, first, second):
     before_break = first.reset_index(drop=True).copy()
     after_break = second.reset_index(drop=True).copy()
@@ -293,8 +353,8 @@ def _fix_breaks(work_table, first, second):
     starts = work_table.copy()
     stops = work_table.copy()
 
-    starts['StopDateTime'] = before_break
-    stops['StartDateTime'] = after_break
+    starts.loc[:, 'StopDateTime'] = before_break
+    stops.loc[:, 'StartDateTime'] = after_break
     stops['QTYGOOD'] = 0
 
     merged = pd.concat([starts, stops])
@@ -306,44 +366,12 @@ def _fix_breaks(work_table, first, second):
     return merged
 
 
-def create_jobnums(work_table):
+def _get_date(multi_row_breaks, column, function):
+    agg_dict = {column: function}
+    dates = multi_row_breaks.groupby('0101 Group').agg(agg_dict)
+    return dates
+
+
+def _create_jobnums(work_table):
     work_table['JOBNUM'] = np.arange(1, len(work_table.index) + 1)
     return work_table
-
-
-def unique_error_count(data_slice, worktable):
-    index_current = pd.Series(data_slice.index)
-    index_next = pd.Series(data_slice.index + 1)
-    indices = pd.concat([index_current, index_next])
-
-    count_error = len(set(indices))
-    count_unique_jobrefs = len(set(worktable['JOBREF']))
-    return count_error, count_unique_jobrefs
-
-
-#To be deleted
-def prepare_work_table(work_table):
-    work_table.sort_values('StartDateTime', inplace=True)
-    work_table = work_table.loc[work_table['WRKCTRID'] == 1405, :]
-    work_table = work_table.reset_index(drop=True)
-    next_columns = ['f_StartDateTime', 'f_StopDateTime', 'f_QTYGOOD', 'f_JOBREF', 'f_NAME']
-    original_columns = ['StartDateTime', 'StopDateTime', 'QTYGOOD', 'JOBREF', 'NAME']
-    work_table[next_columns] = work_table[original_columns].shift(-1)
-    return work_table
-
-
-#To be deleted
-def _filter_work_table_by_work_id(work_table, reg_ex):
-    return work_table.loc[work_table['NAME'].str.contains(reg_ex, regex=True), :]
-
-
-def filter_work_table_by_work_id(work_table, reg_ex):
-    return work_table.loc[work_table['NAME'].str.contains(reg_ex, regex=True), :]
-
-
-#To be deleted
-def filter_work_table(work_table, reg_ex):
-    filtered = _filter_work_table_by_work_id(work_table, reg_ex)
-    filtered = filtered.loc[~filtered.index.duplicated(keep='first')]
-    filtered['JOBNUM'] = np.arange(len(filtered.index))
-    return filtered

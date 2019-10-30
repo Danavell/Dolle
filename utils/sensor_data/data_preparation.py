@@ -4,16 +4,13 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 
-from models import machines
-import utils.work_table.data_preparation as dp
-
 
 class SensorDataCleaner1405:
     """
     Contains machine 1405 sensor data attributes and concrete implementation of
     prep_sensor_data
     """
-    def __init__(self):
+    def __init__(self, fix_duplicates):
         self.deactivation_sensor_id = '0101'
         self.sensor_breaks_columns = [
             'Date', 'Non Duplicate 0101', '0101 Duration'
@@ -23,31 +20,54 @@ class SensorDataCleaner1405:
             'Indgang 0104', 'Indgang 0105', 'Indgang 0106'
         ]
         self.sensor_data = None
+        self._fix_duplicates = fix_duplicates
 
-    def prep_sensor_data(self, work_table, fix_duplicates=False):
+    def prep_sensor_data(self, work_table):
         self.sensor_data = filter_sensor_data(work_table, self.sensor_data)
         self.sensor_data['Indgang 0101'] = abs(self.sensor_data['Indgang 0101'] - 1)
         self.sensor_data = single_non_duplicate(1, self.sensor_data)
         self.sensor_data = calc_on_off_data(self.sensor_data)
-        if fix_duplicates:
+        if self._fix_duplicates:
             self.sensor_data = fix_0103(self.sensor_data)
         return self.sensor_data
 
 
-def prepare_base_data(wt_cleaner, sd_cleaner, wt_path, sd_path, base_data=False):
+def filter_three_main_ladders_1405(work_table):
+    """
+    filters work_table to contain only the three most popular ladders produced
+    by machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) | \
+                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1)
+    return work_table.loc[condition, :]
+
+
+def filter_SW_or_CF_1405(work_table):
+    """
+    filters work_table to contain only ladders whose name starts with SW or CF
+    for machine 1405
+    """
+    condition = (work_table['NAME'].str.contains('^SW|CF', regex=True)) & \
+                (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def get_dummies_concat(data):
+    products = pd.get_dummies(data['NAME'])
+    return pd.concat([data, products], axis=1)
+
+
+def prepare_base_data(wt_cleaner, sd_cleaner, base_data=False):
 
     """
-    1. LOAD WORKTABLE AND REMOVE ALL ERRORS IT CONTAINS
+    1. REMOVE ALL ERRORS CONTAINED IN THE WORK TABLE
     """
-    wt_cleaner.work_table = pd.read_csv(wt_path, sep=';')
     work_table = wt_cleaner.prep_work_table()
 
     """
-    2. LOAD SENSOR DATA AND GROUP AND FILTER IT ACCORDING TO THE JOBNUNS IN THE WORKTABLE
+    2. GROUP AND FILTER SENSOR_DATA ACCORDING TO THE JOBNUMS IN THE WORKTABLE
     """
-    sd_cleaner.sensor_data = pd.read_csv(
-        sd_path, sep=';', parse_dates=['Date'], infer_datetime_format=True
-    )
     sensor_data = sd_cleaner.prep_sensor_data(work_table)
     sensor_id = sd_cleaner.deactivation_sensor_id
 
@@ -94,7 +114,7 @@ def filter_sensor_data(work_table, sensor_data):
         if len(new_data.index) > 0:
             new_data.loc[:, 'JOBREF'] = row['JOBREF']
             new_data.loc[:, 'JOBNUM'] = row['JOBNUM']
-            new_data.loc[:, 'PRODUCT'] = row['NAME']
+            new_data.loc[:, 'NAME'] = row['NAME']
             filtered_data = pd.concat([filtered_data, new_data], sort=True)
     filtered_data = filtered_data.sort_values('Date').reset_index(drop=True)
     return filtered_data

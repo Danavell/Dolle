@@ -1,39 +1,28 @@
 import numpy as np
 import pandas as pd
-from Functions.FeatureExtraction import SensorData as fsd
+from utils.sensor_data import feature_extraction as fsd
+from utils.utils import make_column_arange
 
 
 def calc_pace_diff(product, agg_stats, agg_sensor):
     pass
 
 
-def make_aggregates(sensor_data):
+def make_aggregates(sensor_data, reg_ex):
+    data = dict()
     sensor_data['0103 ID'] = sensor_data.loc[:, '0103 Group b-filled']
-    product_1 = 'CF/3D/3F/2B/12T'
-    product_2 = 'CF/3D/4F/4B/12T'
-    product_3 = 'SW/3D/3F/3B/12T'
+    condition = sensor_data.columns.str.match(reg_ex)
+    products = sensor_data.columns[condition]
 
-    condition_1 = (sensor_data[product_1] == 1)
-    condition_2 = (sensor_data[product_2] == 1)
-    condition_3 = (sensor_data[product_3] == 1)
-    condition_4 = condition_1 | condition_2 | condition_3
+    for product in products:
+        product_data = sensor_data.loc[sensor_data.loc[:, product] == 1].copy()
+        data[product] = _make_aggregate(product_data)
 
-    products = [
-        product_1, product_2, product_3, f'{product_1} + {product_2} + {product_3}'
-    ]
-
-    conditions = [
-        condition_1, condition_2, condition_3, condition_4
-    ]
-
-    for i in range(len(products)):
-        locals()[products[i]] = _make_aggregate(conditions[i], sensor_data, set_to_zero=False)
-
-    return locals()[products[0]], locals()[products[1]], locals()[products[2]], locals()[products[3]]
+    data[f'all {products.size} products'] = _make_aggregate(sensor_data)
+    return data
 
 
-def _make_aggregate(condition, sensor_data, set_to_zero=False):
-    sensor_data = sensor_data.loc[condition]
+def _make_aggregate(sensor_data, set_to_zero=False):
     agg_dict = {
         'JOBNUM': 'first',
         '0103 ID': 'first',
@@ -128,15 +117,6 @@ def _make_010n_jam_groups(sensor_data, n=2):
     return multi_time_0102[f'010{n} Jam']
 
 
-def make_column_arange(first_slice, target_column, output_column):
-    condition = first_slice[target_column] != 0
-    second_slice = first_slice.loc[condition]
-    second_slice[output_column] = np.arange(1, len(second_slice.index) + 1)
-    first_slice.loc[:, output_column] = second_slice.loc[:, output_column].copy()
-    first_slice.loc[:, output_column] = first_slice[output_column].fillna(method='ffill').copy()
-    return first_slice[output_column]
-
-
 def _make_non_duplicate_jams(sensor_data, column, col=2):
     condition = (sensor_data[f'Non Duplicate 010{col}'] == 1) & (sensor_data[column] >= 0)
     jams = sensor_data.loc[condition]
@@ -202,6 +182,6 @@ def _make_new_jam_durations(n, sensor_data, col=2):
     condition = sensor_data[f'010{col} Jam'].isin(jams)
     groups = sensor_data.loc[condition]
     column = f'010{col} Jam >= {n}'
-    sensor_data[column] = make_column_arange(groups, f'Non Duplicate 010{col}', column)
+    sensor_data[column] = make_column_arange(groups, f'Non Duplicate 010{col}')
     sensor_data = _make_non_duplicate_jams(sensor_data, column)
     return sensor_data

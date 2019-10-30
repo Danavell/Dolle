@@ -1,7 +1,9 @@
-import pandas as pd
-import numpy as np
-from load_data import utilities as ut
 import os
+
+import numpy as np
+import pandas as pd
+
+from utils.load_data import utilities as ut
 
 
 def get_data(file_path, target):
@@ -56,22 +58,13 @@ def read_sensor_data(path_in, columns=None, dates=None, remake_dates=False, sep=
     return data
 
 
-def work_table(path_in, columns, sep=';'):
-    try:
-        return pd.read_csv(path_in, sep=sep,
-                           usecols=columns['init_work_prepared'],
-                           encoding="ISO-8859-1",
-                           parse_dates=['StartDateTime', 'StopDateTime'],
-                           infer_datetime_format=True
-                           )
-    except ValueError:
-        sep = ','
-        return pd.read_csv(path_in, sep=sep,
-                           usecols=columns['init_work_prepared'],
-                           encoding="ISO-8859-1",
-                           parse_dates=['StartDateTime', 'StopDateTime'],
-                           infer_datetime_format=True
-                           )
+def read_work_table(path_in, columns, sep=';'):
+    return pd.read_csv(path_in, sep=sep,
+                       usecols=columns['init_work_prepared'],
+                       encoding="ISO-8859-1",
+                       parse_dates=['StartDateTime', 'StopDateTime'],
+                       infer_datetime_format=True
+                       )
 
 
 def read_sample_work_table(work_path, prod_path, machine_id, reg_ex, columns):

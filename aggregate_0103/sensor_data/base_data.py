@@ -15,9 +15,9 @@ class BaseDataAdapter:
 
 
 class BaseData:
-    def __init__(self, machine, sd_cleaner, remove_overlaps, ladder_filter):
-        self.machine = machine
-        self.columns = self.machine.data_generation_columns
+    def __init__(self, sd_cleaner, remove_overlaps, ladder_filter):
+        self.machine = None
+        self.columns = None
 
         self._folder = None
         self._sd_cleaner = sd_cleaner

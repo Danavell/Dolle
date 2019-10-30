@@ -52,12 +52,14 @@ class PreProcess:
     """
     Generic class for pre-processing data into final format
     """
-    def __init__(self, folder, category, base_data, feature_extractor, read_writer):
+    def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer):
+        self._machine = machine
         self._base_data = base_data
-        self._columns = self._base_data.columns
+        columns = self._machine.data_generation_columns
+        self._base_data.columns = columns
         self._feature_extractor = feature_extractor
         self._read_writer = read_writer(
-            folder=folder, columns=self._columns, category=category
+            folder=folder, columns=columns, category=category
         )
         self._work_table = None
         self._sensor_data = None
@@ -72,7 +74,7 @@ class PreProcess:
 
     def feature_extraction(self):
         if hasattr(self._feature_extractor, 'feature_extraction'):
-            self._feature_extractor.feature_extraction(self._sensor_data, self._columns)
+            self._feature_extractor.feature_extraction(self._work_table, self._sensor_data, self._machine)
 
     def save(self):
         if hasattr(self._feature_extractor, 'data'):

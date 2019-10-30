@@ -12,7 +12,7 @@ from utils.work_table import data_preparation as wt
 #         machine=Machine1405(),
 #         sd_cleaner=sd.SensorDataCleaner1405(fix_duplicates=True),
 #         remove_overlaps=wt.remove_all_overlaps,
-#         ladder_filter=sd.filter_three_main_ladders_1405,
+#         ladder_filter=sd.filter_three_main_ladders_1405_auto_input,
 #     ),
 #     feature_extractor=fe.MLFeatureExtractor0103(),
 #     read_writer=CSVReadWriter

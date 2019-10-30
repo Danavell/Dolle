@@ -51,6 +51,7 @@ class StatsFeatureExtractor:
         columns = machine.generate_statistics
         stats = st.generate_statistics(self._sensor_data.copy(), work_table, columns)
         agg_dict = {
+            'Product': 'first',
             'Job Length(s)': 'sum',
             'Strings per Ladder': ['median', 'mean'],
             '0103 Count Vs Expected': ['median', 'mean'],

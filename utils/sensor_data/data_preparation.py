@@ -32,14 +32,46 @@ class SensorDataCleaner1405:
         return self.sensor_data
 
 
-def filter_three_main_ladders_1405(work_table):
+def filter_three_main_ladders_1405_auto_input(work_table):
     """
     filters work_table to contain only the three most popular ladders produced
     by machine 1405
     """
-    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) | \
-                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) | \
-                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1)
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_four_main_ladders_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the four most popular ladders produced
+    by machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_three_main_CF_ladders_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the three most popular ladders whose
+    name begins with CF and have automated string input for machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_main_SW_ladder_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the most sold ladder whose name begins
+    with SW for machine 1405
+    """
+    condition = (work_table.loc[:, 'SW/3D/3F/3B/12T']) & (work_table['WRKCTRID'] == 1405)
     return work_table.loc[condition, :]
 
 
@@ -48,8 +80,7 @@ def filter_SW_or_CF_1405(work_table):
     filters work_table to contain only ladders whose name starts with SW or CF
     for machine 1405
     """
-    condition = (work_table['NAME'].str.contains('^SW|CF', regex=True)) & \
-                (work_table['WRKCTRID'] == 1405)
+    condition = (work_table['NAME'].str.contains('^SW|CF', regex=True)) & (work_table['WRKCTRID'] == 1405)
     return work_table.loc[condition, :]
 
 
@@ -137,16 +168,6 @@ def get_sensor_data_breaks(sensor_data, sensor_id):
     sensor_data_breaks = breaks.loc[breaks[f'Non Duplicate {sensor_id}'] == 1]
     sensor_data_breaks = sensor_data_breaks.loc[sensor_data_breaks[f'{sensor_id} Duration'] > 1200].copy()
     return sensor_data_breaks
-
-
-def initial_fix(work_table, sensor_data, fix_duplicates=False):
-    sensor_data = filter_sensor_data(work_table, sensor_data)
-    sensor_data['Indgang 0101'] = abs(sensor_data['Indgang 0101'] - 1)
-    sensor_data = single_non_duplicate(1, sensor_data)
-    sensor_data = calc_on_off_data(sensor_data)
-    if fix_duplicates:
-        sensor_data = fix_0103(sensor_data)
-    return sensor_data
 
 
 def set_first_and_last_row_to_zero(sensor_data, sensor_id):
@@ -248,13 +269,15 @@ def calc_multi_row_0101_duration(sensor_data):
                 | (sensor_data['Indgang 0101'] == 1) \
                 & (sensor_data['next_0101'] == 1)
 
-    multi_time_0101 = make_column_2_levels(sensor_data,
-                                           None,
-                                           'Non Duplicate 0101',
-                                           '0101 Group',
-                                           condition_1=condition,
-                                           cumcount=False,
-                                           fillna=False)
+    multi_time_0101 = make_column_2_levels(
+        sensor_data,
+        None,
+        'Non Duplicate 0101',
+        '0101 Group',
+        condition_1=condition,
+        cumcount=False,
+        fillna=False
+    )
 
     multi_time_0101['Duplicate Index'] = multi_time_0101.index
 
@@ -269,8 +292,13 @@ def calc_multi_row_0101_duration(sensor_data):
 
     mt_0101_groupby['delta_time'] = calc_group_pace(mt_0101_groupby, future=True)
     sensor_data = add_column(sensor_data, multi_time_0101, '0101 Group')
-    sensor_data = add_column(sensor_data, mt_0101_groupby, '0101 Duration',
-                             child_col='delta_time', indices=mt_0101_groupby.index)
+    sensor_data = add_column(
+        sensor_data,
+        mt_0101_groupby,
+        '0101 Duration',
+        child_col='delta_time',
+        indices=mt_0101_groupby.index
+    )
     return sensor_data
 
 
@@ -331,12 +359,13 @@ def convert_non_unique_identifier_into_unique(sensor_data,
     sensor_data = return_even_or_odd_groups(
         odd_and_even_column, odd_or_even_column, sensor_data, even
     )
-    return make_column_2_levels(sensor_data,
-                                odd_or_even_column,
-                                non_duplicate_column,
-                                output_column,
-                                cumcount=False
-                                )
+    return make_column_2_levels(
+        sensor_data,
+        odd_or_even_column,
+        non_duplicate_column,
+        output_column,
+        cumcount=False
+    )
 
 
 def calc_group_pace(dates, future=False):

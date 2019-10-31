@@ -1,10 +1,10 @@
 # import numpy as np
 # import pandas as pd
 #
-# from MachineLearning import MLModels as m
-# from MachineLearning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
-# from MachineLearning.STATS import ml_stats, confused
-# from MachineLearning.PreProcess.Utilities import flatten
+# from machine_learning import MLModels as m
+# from machine_learning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
+# from machine_learning.STATS import ml_stats, confused
+# from machine_learning.PreProcess.Utilities import flatten
 # from sklearn.metrics import confusion_matrix
 # from sklearn.preprocessing import StandardScaler
 #
@@ -79,10 +79,10 @@
 
 import pandas as pd
 
-from MachineLearning import MLModels as m
-from MachineLearning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
-from MachineLearning.STATS import ml_stats, confused
-from MachineLearning.PreProcess.Utilities import flatten
+from machine_learning import MLModels as m
+from machine_learning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
+from machine_learning.STATS import ml_stats, confused
+from machine_learning.PreProcess.Utilities import flatten
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import MinMaxScaler
 
@@ -123,10 +123,10 @@ def slice_data_overlapping(data, num_columns):
 # import numpy as np
 # import pandas as pd
 #
-# from MachineLearning import MLModels as m
-# from MachineLearning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
-# from MachineLearning.STATS import ml_stats, confused
-# from MachineLearning.PreProcess.Utilities import flatten
+# from machine_learning import MLModels as m
+# from machine_learning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
+# from machine_learning.STATS import ml_stats, confused
+# from machine_learning.PreProcess.Utilities import flatten
 # from sklearn.metrics import confusion_matrix
 # from sklearn.preprocessing import StandardScaler
 #
@@ -201,10 +201,10 @@ def slice_data_overlapping(data, num_columns):
 
 import pandas as pd
 
-from MachineLearning import MLModels as m
-from MachineLearning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
-from MachineLearning.STATS import ml_stats, confused
-from MachineLearning.PreProcess.Utilities import flatten
+from machine_learning import MLModels as m
+from machine_learning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
+from machine_learning.STATS import ml_stats, confused
+from machine_learning.PreProcess.Utilities import flatten
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import MinMaxScaler
 

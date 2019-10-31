@@ -20,7 +20,7 @@ class KerasBase:
         self._output_shape = output_shape
         self._early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
         self._mcp_save = ModelCheckpoint(
-            '/home/james/Documents/Development/Dolle/MachineLearning/mdl_wts.hdf5',
+            '/home/james/Documents/Development/Dolle/machine_learning/mdl_wts.hdf5',
             save_best_only=True, monitor='val_loss', mode='min'
         )
         self._reduce_lr_loss = ReduceLROnPlateau(
@@ -161,5 +161,5 @@ def create_model_fit_predict(X_train, y_train, X_test, y_test, class_weights=Non
     plt.legend()
     plt.show()
 
-    y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/MachineLearning/mdl_wts.hdf5')
+    y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/machine_learning/mdl_wts.hdf5')
     return model, y_pred

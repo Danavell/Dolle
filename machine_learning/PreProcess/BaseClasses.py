@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from MachineLearning.PreProcess import Utilities as util
+from machine_learning.PreProcess import Utilities as util
 
 
 class PreProcessBase(ABC):

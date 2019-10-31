@@ -19,14 +19,6 @@ class CSVReadWriter:
         self._sensor_path = os.path.join(self._cat_directory, 'sensor_data.csv')
         self._work_table_pat = os.path.join(self._cat_directory, 'work_table.csv')
 
-    def save_sensor_and_work_table(self, work_table, sensor_data):
-        if not os.path.exists(self._cat_directory):
-            os.mkdir(self._cat_directory)
-            sensor_data.to_csv(self._sensor_path, sep=';', index=False)
-            work_table.to_csv(self._work_table_pat, sep=';', index=False)
-        else:
-            raise Exception('DIRECTORY ALREADY EXISTS')
-
     def read_raw_sensor_data(self):
         return pd.read_csv(
             os.path.join(self._dir, 'sensor_data.csv'), sep=';', parse_dates=['Date'], infer_datetime_format=True
@@ -41,11 +33,15 @@ class CSVReadWriter:
     def read_work_table(self):
         return pd.read_csv(self._work_table_pat, sep=';')
 
-    def save_additional_files(self, data):
-        for key in data.keys():
-            if isinstance(data[key], pd.DataFrame):
-                path = os.path.join(self._cat_directory, f"{key.replace('/', '-')}.csv")
-                data[key].to_csv(path, sep=';', index=False)
+    def save(self, data):
+        if not os.path.exists(self._cat_directory):
+            os.mkdir(self._cat_directory)
+            for key in data.keys():
+                if isinstance(data[key], pd.DataFrame):
+                    path = os.path.join(self._cat_directory, f"{key.replace('/', '-')}.csv")
+                    data[key].to_csv(path, sep=';', index=False)
+        else:
+            raise Exception('DIRECTORY ALREADY EXISTS')
 
 
 class PreProcess:
@@ -58,9 +54,7 @@ class PreProcess:
         columns = self._machine.data_generation_columns
         self._base_data.columns = columns
         self._feature_extractor = feature_extractor
-        self._read_writer = read_writer(
-            folder=folder, columns=columns, category=category
-        )
+        self._read_writer = read_writer(folder=folder, columns=columns, category=category)
         self._work_table = None
         self._sensor_data = None
 
@@ -70,7 +64,6 @@ class PreProcess:
         self._work_table, self._sensor_data = self._base_data.get_base_data(
             work_table, sensor_data, stats=stats
         )
-        self._read_writer.save_sensor_and_work_table(self._work_table, self._sensor_data)
 
     def feature_extraction(self):
         if hasattr(self._feature_extractor, 'feature_extraction'):
@@ -78,7 +71,7 @@ class PreProcess:
 
     def save(self):
         if hasattr(self._feature_extractor, 'data'):
-            self._read_writer.save_additional_files(self._feature_extractor.data)
+            self._read_writer.save(self._feature_extractor.data)
 
     def get_data(self):
         if hasattr(self._feature_extractor, 'data'):

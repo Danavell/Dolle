@@ -4,7 +4,7 @@ import pandas as pd
 import sklearn
 from sklearn.preprocessing import MinMaxScaler
 
-from MachineLearning.STATS import add_label_ids
+from machine_learning.STATS import add_label_ids
 
 
 def adjust_inputs(num_rows, skip):

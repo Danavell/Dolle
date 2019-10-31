@@ -1,5 +1,35 @@
 import pandas as pd
 
+from utils.sensor_data import feature_extraction as fsd
+
+
+class StatsFeatureExtractor:
+    def __init__(self):
+        self.data = None
+
+    def feature_extraction(self, work_table, sensor_data, machine):
+        columns = machine.data_generation_columns
+        sensor_data = fsd.create_non_duplicates(sensor_data, columns, phantoms=False)
+        sensor_data = fsd.calculate_pace(sensor_data, columns)
+
+        columns = machine.generate_statistics
+        stats = generate_statistics(sensor_data.copy(), work_table, columns)
+        agg_dict = {
+            'Product': 'first',
+            'Job Length(s)': 'sum',
+            'Strings per Ladder': ['median', 'mean'],
+            '0103 Count Vs Expected': ['median', 'mean'],
+            '0102 Pace median(s)': 'median',
+            '0102 Pace avg(s)': 'mean',
+            '0103 Pace median(s)': 'median',
+            '0103 Pace avg(s)': 'mean'
+        }
+        self.data = dict()
+        self.data['sensor_data'] = sensor_data
+        self.data['work_table'] = work_table
+        self.data['stats'] = stats
+        self.data['agg_stats'] = stats.groupby('Product').agg(agg_dict)
+
 
 def generate_statistics(data, work_table, columns):
     data_groupby = data.groupby('JOBREF')

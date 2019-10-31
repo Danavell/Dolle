@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from MachineLearning import MLModels as m
-from MachineLearning.PreProcess.PreProcess import process_data
-from MachineLearning.STATS import ml_stats, confused
+from machine_learning import MLModels as m
+from machine_learning.PreProcess.PreProcess import process_data
+from machine_learning.STATS import ml_stats, confused
 
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
@@ -77,7 +77,7 @@ for i in range(1, catch + 1):
     output_dict[i] = len(dr.loc[condition, :].index)
 
 
-y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/MachineLearning/mdl_wts.hdf5')
+y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/machine_learning/mdl_wts.hdf5')
 
 # model.save(r'/home/james/Documents/model.hdf5')
 y_pred_pd = pd.DataFrame(y_pred, index=y_test.index)
@@ -107,9 +107,9 @@ for i in range(1, catch + 1):
 # import numpy as np
 # import pandas as pd
 #
-# from MachineLearning import MLModels as m
-# from MachineLearning.PreProcess.PreProcess import process_data
-# from MachineLearning.STATS import ml_stats, confused
+# from machine_learning import MLModels as m
+# from machine_learning.PreProcess.PreProcess import process_data
+# from machine_learning.STATS import ml_stats, confused
 #
 # from sklearn.metrics import confusion_matrix
 #
@@ -203,7 +203,7 @@ for i in range(1, catch + 1):
 #
 #
 #
-# # y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/MachineLearning/mdl_wts.hdf5')
+# # y_pred = model.predict_best_weights(X_test, r'/home/james/Documents/Development/Dolle/machine_learning/mdl_wts.hdf5')
 #
 # # model.save(r'/home/james/Documents/model.hdf5')
 # y_pred_pd = pd.DataFrame(y_pred, index=y_test.index)

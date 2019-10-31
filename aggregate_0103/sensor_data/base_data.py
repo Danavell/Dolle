@@ -31,3 +31,4 @@ class BaseData:
         self._sd_cleaner.sensor_data = sensor_data
         wt_prep = wt.PrepareWorkTable(self.columns, stats, wt_cleaner)
         return sd.prepare_base_data(wt_prep, self._sd_cleaner)
+

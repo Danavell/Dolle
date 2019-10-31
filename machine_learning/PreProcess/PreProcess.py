@@ -1,5 +1,5 @@
-from MachineLearning.PreProcess import Utilities as util
-from MachineLearning.PreProcess.BaseClasses import CatchTTS, CatchNoTTS, NoCatch
+from machine_learning.PreProcess import Utilities as util
+from machine_learning.PreProcess.BaseClasses import CatchTTS, CatchNoTTS, NoCatch
 
 """
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ def no_train_test_split_factory(agg, num_rows=2, catch=4, skip=1, scaler=None, m
 
 # from abc import ABC, abstractmethod
 # import pandas as pd
-# from MachineLearning import utilities as util
+# from machine_learning import utilities as util
 #
 #
 # class PreProcessBase(ABC):

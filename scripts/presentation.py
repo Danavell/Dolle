@@ -6,9 +6,9 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from MachineLearning import MLModels as m
-from MachineLearning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
-from MachineLearning.STATS import ml_stats, confused
+from machine_learning import MLModels as m
+from machine_learning.PreProcess.PreProcess import CatchMultiCategoryTTS, process_data, CatchSingleBlobNoTTS, NoCatchNoTTS
+from machine_learning.STATS import ml_stats, confused
 
 from sklearn.metrics import confusion_matrix
 

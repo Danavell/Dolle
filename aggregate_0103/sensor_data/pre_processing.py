@@ -1,7 +1,8 @@
 from aggregate_0103.sensor_data.base_data import BaseData
 from aggregate_0103.sensor_data import feature_extraction as fe
-from utils.utils import CSVReadWriter, Machine1405, PreProcess
 from utils.sensor_data import data_preparation as sd
+from utils.STATS import STATS as st
+from utils.utils import CSVReadWriter, Machine1405, PreProcess
 from utils.work_table import data_preparation as wt
 
 
@@ -26,7 +27,7 @@ pre_process = PreProcess(
         remove_overlaps=wt.remove_all_overlaps,
         ladder_filter=sd.filter_SW_or_CF_1405,
     ),
-    feature_extractor=fe.StatsFeatureExtractor(),
+    feature_extractor=st.StatsFeatureExtractor(),
     read_writer=CSVReadWriter
 )
 

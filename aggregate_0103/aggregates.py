@@ -8,7 +8,10 @@ def calc_pace_diff(product, agg_stats, agg_sensor):
     pass
 
 
-def make_aggregates(sensor_data, reg_ex):
+def make_aggregates(sensor_data, reg_ex, drop_first_rows=True):
+    """
+    Aggregates raw sensor data into final form
+    """
     data = dict()
     sensor_data['0103 ID'] = sensor_data.loc[:, '0103 Group b-filled']
     condition = sensor_data.columns.str.match(reg_ex)
@@ -16,7 +19,19 @@ def make_aggregates(sensor_data, reg_ex):
 
     for product in products:
         product_data = sensor_data.loc[sensor_data.loc[:, product] == 1].copy()
-        data[product] = _make_aggregate(product_data)
+        product_data = _make_aggregate(product_data)
+
+        if drop_first_rows:
+            """
+            The first row of many JOBNUMs contain strange readings that are unrepresentative of 
+            the data as a whole, implying that they should be dropped 
+            """
+            product_data['previous_JOBNUM'] = product_data.loc[:, 'JOBNUM'].shift(1)
+            condition = product_data.loc[:, 'JOBNUM'] != product_data.loc[:, 'previous_JOBNUM']
+            indices = product_data[condition].index
+            product_data.drop(indices, axis=0, inplace=True)
+
+        data[product] = product_data
 
     data[f'all {products.size} products'] = _make_aggregate(sensor_data)
     return data

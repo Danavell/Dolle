@@ -14,26 +14,28 @@ def make_aggregates(sensor_data, reg_ex, drop_first_rows=True):
     """
     data = dict()
     sensor_data['0103 ID'] = sensor_data.loc[:, '0103 Group b-filled']
-    condition = sensor_data.columns.str.match(reg_ex)
-    products = sensor_data.columns[condition]
+    products = sensor_data.columns[sensor_data.columns.str.match(reg_ex)]
 
     for product in products:
         product_data = sensor_data.loc[sensor_data.loc[:, product] == 1].copy()
         product_data = _make_aggregate(product_data)
+        data[product] = _drop_first_rows(product_data) if drop_first_rows else product_data
 
-        if drop_first_rows:
-            """
-            The first row of many JOBNUMs contain strange readings that are unrepresentative of 
-            the data as a whole, implying that they should be dropped 
-            """
-            product_data['previous_JOBNUM'] = product_data.loc[:, 'JOBNUM'].shift(1)
-            condition = product_data.loc[:, 'JOBNUM'] != product_data.loc[:, 'previous_JOBNUM']
-            indices = product_data[condition].index
-            product_data.drop(indices, axis=0, inplace=True)
+    all_products = _make_aggregate(sensor_data)
+    column = f'all {products.size} products'
+    data[column] = _drop_first_rows(all_products) if drop_first_rows else all_products
+    return data
 
-        data[product] = product_data
 
-    data[f'all {products.size} products'] = _make_aggregate(sensor_data)
+def _drop_first_rows(data):
+    """
+    The first row of many JOBNUMs contain strange readings that are unrepresentative of
+    the data as a whole, implying that they should be dropped
+    """
+    data['previous_JOBNUM'] = data.loc[:, 'JOBNUM'].shift(1)
+    condition = data.loc[:, 'JOBNUM'] != data.loc[:, 'previous_JOBNUM']
+    indices = data[condition].index
+    data.drop(indices, axis=0, inplace=True)
     return data
 
 
@@ -50,8 +52,6 @@ def _make_aggregate(sensor_data, set_to_zero=False):
         '0104 Alarm Time': 'sum',
         '0105 Alarm Time': 'sum',
         '0106 Alarm Time': 'sum',
-        '0103 per 0102': 'first',
-        '0102 per 0103': 'first',
         'Sum 0102 Jam >= 20': 'sum',
         'Sum 0102 Jam >= 19': 'sum',
         'Sum 0102 Jam >= 18': 'sum',

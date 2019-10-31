@@ -100,8 +100,8 @@ def feature_extraction_sensor_data(sensor_data, columns):
     #     sensor_data = sd.make_010n_groups(sensor_data, f'Indgang 010{i}', f'Non Duplicate 010{i}', column)
         # sensor_data = sd.add_sequential_rows_per_group(sensor_data, column, f'010{i} Jam Sequence')
     sensor_data = sensor_groupings(sensor_data)
-    for i in range(2, 4):
-        sensor_data = cumcount_per_010n(sensor_data, outer=i)
+    # for i in range(2, 4):
+    #     sensor_data = cumcount_per_010n(sensor_data, outer=i)
     # sensor_data = sd.cum_and_non_cum_010n_group_time_delta(sensor_data, cumsum=True)
     # use fillna on specific columns
     # sensor_data.fillna(0, inplace=True)
@@ -157,7 +157,7 @@ def create_non_duplicate(sensor_data, groupby, first, column_num):
     return sensor_data
 
 
-def create_non_duplicates(sensor_data, columns, phantoms=False):
+def create_non_duplicates(sensor_data, phantoms=False):
     groupby = sensor_data.groupby('JOBNUM')
     first, _ = _gen_first_and_last(sensor_data)
 

@@ -9,7 +9,7 @@ class StatsFeatureExtractor:
 
     def feature_extraction(self, work_table, sensor_data, machine):
         columns = machine.data_generation_columns
-        sensor_data = fsd.create_non_duplicates(sensor_data, columns, phantoms=False)
+        sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
 
         columns = machine.generate_statistics

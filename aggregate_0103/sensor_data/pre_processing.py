@@ -9,8 +9,8 @@ from utils.work_table import data_preparation as wt
 # pre_process = PreProcess(
 #     folder='01-01-18 to 01-01-19',
 #     category='MLAgg0103_1405: 3 Main Ladders',
+#     machine=Machine1405(),
 #     base_data=BaseData(
-#         machine=Machine1405(),
 #         sd_cleaner=sd.SensorDataCleaner1405(fix_duplicates=True),
 #         remove_overlaps=wt.remove_all_overlaps,
 #         ladder_filter=sd.filter_three_main_ladders_1405_auto_input,
@@ -20,7 +20,7 @@ from utils.work_table import data_preparation as wt
 # )
 pre_process = PreProcess(
     folder='01-01-18 to 01-01-19',
-    category='Stats All Ladders',
+    category='Stats All 1405 Ladders',
     machine=Machine1405(),
     base_data=BaseData(
         sd_cleaner=sd.SensorDataCleaner1405(fix_duplicates=True),
@@ -30,8 +30,7 @@ pre_process = PreProcess(
     feature_extractor=st.StatsFeatureExtractor(),
     read_writer=CSVReadWriter
 )
-
-pre_process.get_base_data()
+pre_process.get_base_data(stats=True)
 pre_process.feature_extraction()
 pre_process.save()
 

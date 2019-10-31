@@ -1,6 +1,31 @@
 import pandas as pd
 import numpy as np
 
+from utils.utils import get_dummy_products
+
+
+class WorkTableCleaner:
+    """
+    removes duplicated rows, splits rows where breaks occurred and filters the work table
+    to contain only the ladders in the ladder_filter
+    """
+    def __init__(self, work_table, stats, ladder_filter, remove_overlaps):
+        self.work_table = work_table
+        self.stats = stats
+        self._ladder_filter = ladder_filter
+        self._remove_overlaps = remove_overlaps
+
+    def filter(self):
+        self.work_table = add_columns(self.work_table)
+        _, self.work_table = get_dummy_products(self.work_table)
+        self.work_table = self._ladder_filter(self.work_table)
+
+    def clean(self):
+        self.work_table = self._remove_overlaps(self.work_table, self.stats)
+
+    def remove_breaks(self, sensor_data, breaks):
+        return remove_breaks(breaks, self.work_table, sensor_data, self.stats)
+
 
 class PrepareWorkTable:
     """
@@ -182,28 +207,39 @@ def _remove_n_plus_1_index_and_set_column(work_table, data_slice, columns):
 
 
 def remove_partial_overlaps(work_table, stats=True):
-    """STILL NEED TO DECIDE WHAT TO DO"""
+    """
+    When two JOBNUMs, both part of the same JOBREF, overlap in time, this
+    function detects and merges them together
+    """
     payload_1 = {'column': 'QTYGOOD', 'f_column': 'f_QTYGOOD'}
     payload_2 = {'column': 'StopDateTime', 'f_column': 'f_StopDateTime'}
 
-    both = {'payload_1': payload_1, 'payload_2': payload_2,}
+    both = {'payload_1': payload_1, 'payload_2': payload_2, }
     only_2 = {'payload_2': payload_2, }
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) \
-                & (work_table['StopDateTime'] > work_table['f_StartDateTime']) \
-                & (work_table['f_StartDateTime'] > work_table['StartDateTime']) \
-                & (work_table['QTYGOOD'] == 0) \
-                & (work_table['f_QTYGOOD'] != 0)
+    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                (work_table['QTYGOOD'] == 0) & \
+                (work_table['f_QTYGOOD'] != 0)
     partial_overlaps = work_table.loc[condition]
     work_table = _apply_condition_partial(work_table, partial_overlaps, both)
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) \
-                & (work_table['StopDateTime'] > work_table['f_StartDateTime']) \
-                & (work_table['f_StartDateTime'] > work_table['StartDateTime']) \
-                & (work_table['QTYGOOD'] != 0) \
-                & (work_table['f_QTYGOOD'] == 0)
+    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                (work_table['QTYGOOD'] != 0) & \
+                (work_table['f_QTYGOOD'] == 0)
     partial_overlaps = work_table.loc[condition]
     work_table = _apply_condition_partial(work_table, partial_overlaps, both)
+
+    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                (work_table['QTYGOOD'] == 0) & \
+                (work_table['f_QTYGOOD'] == 0)
+    partial_overlaps = work_table.loc[condition]
+    work_table = _apply_condition_partial(work_table, partial_overlaps, only_2)
 
     condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) \
                 & (work_table['StopDateTime'] > work_table['f_StartDateTime']) \

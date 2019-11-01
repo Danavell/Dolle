@@ -51,6 +51,63 @@ class PrepareWorkTable:
         return self._cleaner.remove_breaks(breaks, sensor_data).sort_values('StartDateTime').reset_index(drop=True)
 
 
+def filter_main_SW_1405_auto_input(work_table):
+    condition = (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_main_SW_and_2_CF_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the three most popular ladders produced
+    by machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_main_SW_and_3_CF_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the four most popular ladders produced
+    by machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_3_main_CF_ladders_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the three most popular ladders whose
+    name begins with CF and have automated string input for machine 1405
+    """
+    condition = (work_table.loc[:, 'CF/3D/3F/2B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405) | \
+                (work_table.loc[:, 'CF/3D/4F/4B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_main_SW_ladder_1405_auto_input(work_table):
+    """
+    filters work_table to contain only the most sold ladder whose name begins
+    with SW for machine 1405
+    """
+    condition = (work_table.loc[:, 'SW/3D/3F/3B/12T']) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_SW_or_CF_1405(work_table):
+    """
+    filters work_table to contain only ladders whose name starts with SW or CF
+    for machine 1405
+    """
+    condition = (work_table['NAME'].str.contains('^SW|CF', regex=True)) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
 def get_dummy_products(data):
     cols = data.loc[:, 'NAME'].str.split(':', expand=True).dropna()
     data.loc[:, 'NAME'] = cols[0].apply(

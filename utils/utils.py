@@ -8,6 +8,16 @@ from utils.sensor_data import data_preparation as sd
 from utils.work_table import data_preparation as wt
 
 
+class BaseData1405FeatureExtractor:
+    def __init__(self):
+        self.data = dict()
+        self._category = None
+
+    def feature_extraction(self, work_table, sensor_data):
+        self.data['sensor_data'] = sensor_data
+        self.data['work_table'] = work_table
+
+
 class BaseDataAdapter:
     def __init__(self, work_table, sensor_data):
         self.work_table = work_table

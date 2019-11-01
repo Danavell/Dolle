@@ -1,17 +1,7 @@
-from aggregations.aggregate_0103 import aggregates as a
+from pre_processing.aggregate_0103 import aggregates as a
 from utils.utils import make_column_arange
 from utils.sensor_data import feature_extraction as fsd
 from utils.sensor_data import data_preparation as sd
-
-
-class BaseData1405FeatureExtractor:
-    def __init__(self):
-        self.data = dict()
-        self._category = None
-
-    def feature_extraction(self, work_table, sensor_data):
-        self.data['sensor_data'] = sensor_data
-        self.data['work_table'] = work_table
 
 
 class MLFeatureExtractor0103:

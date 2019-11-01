@@ -47,16 +47,21 @@ def calculate_pace(sensor_data, columns):
     calculates the duration of each row of alarm data
     """
     for i in range(4, 7):
-        sensor_data[f'010{i} Alarm Time'] = _gen_pace_data(sensor_data, f'Indgang 010{i}')
+        sensor_data[f'010{i} Alarm Time'] = _calc_error_time(sensor_data, f'Indgang 010{i}')
     return sensor_data
 
 
 def _gen_pace_data(sensor_data, column):
     filtered = sensor_data[sensor_data[column] != 0].copy()
-    filtered['Previous_Non_Duplicate_Date'] = sensor_data['Date']
-    date_shifted = filtered.groupby(['JOBNUM'])['Previous_Non_Duplicate_Date'].shift(1)
+    date_shifted = filtered.groupby(['JOBNUM'])['Date'].shift(1)
     pace = filtered['Date'] - date_shifted
     return _to_seconds(pace)
+
+
+def _calc_error_time(sensor_data, column):
+    sensor_data['previous_Date'] = sensor_data.groupby('JOBNUM')['Date'].shift(1)
+    sensor_data = sensor_data.loc[sensor_data[column] != 0, ['previous_Date', 'Date']].copy()
+    return _to_seconds(sensor_data['Date'] - sensor_data['previous_Date'])
 
 
 def _to_seconds(times):
@@ -91,21 +96,6 @@ def get_dummy_products(data):
     agg.drop(product, axis=1, inplace=True)
     agg[product] = cols[0].apply(lambda x: x[:2].lstrip().rstrip()) + '/' + cols[5].apply(lambda x: x.lstrip().rstrip())
     return pd.get_dummies(agg[product]), pd.concat([agg, pd.get_dummies(agg[product])], axis=1)
-
-
-def feature_extraction_sensor_data(sensor_data, columns):
-    sensor_data = create_non_duplicates(sensor_data, columns, phantoms=False)
-    # for i in range(2, 4):
-    #     column = f'010{i} ffill'
-    #     sensor_data = sd.make_010n_groups(sensor_data, f'Indgang 010{i}', f'Non Duplicate 010{i}', column)
-        # sensor_data = sd.add_sequential_rows_per_group(sensor_data, column, f'010{i} Jam Sequence')
-    sensor_data = sensor_groupings(sensor_data)
-    # for i in range(2, 4):
-    #     sensor_data = cumcount_per_010n(sensor_data, outer=i)
-    # sensor_data = sd.cum_and_non_cum_010n_group_time_delta(sensor_data, cumsum=True)
-    # use fillna on specific columns
-    # sensor_data.fillna(0, inplace=True)
-    return sensor_data
 
 
 def sensor_groupings(data):

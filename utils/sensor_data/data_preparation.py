@@ -32,7 +32,12 @@ class SensorDataCleaner1405:
         return self.sensor_data
 
 
-def filter_three_main_ladders_1405_auto_input(work_table):
+def filter_main_SW_1405_auto_input(work_table):
+    condition = (work_table.loc[:, 'SW/3D/3F/3B/12T'] == 1) & (work_table['WRKCTRID'] == 1405)
+    return work_table.loc[condition, :]
+
+
+def filter_main_SW_and_2_CF_1405_auto_input(work_table):
     """
     filters work_table to contain only the three most popular ladders produced
     by machine 1405
@@ -43,7 +48,7 @@ def filter_three_main_ladders_1405_auto_input(work_table):
     return work_table.loc[condition, :]
 
 
-def filter_four_main_ladders_1405_auto_input(work_table):
+def filter_main_SW_and_3_CF_1405_auto_input(work_table):
     """
     filters work_table to contain only the four most popular ladders produced
     by machine 1405
@@ -55,7 +60,7 @@ def filter_four_main_ladders_1405_auto_input(work_table):
     return work_table.loc[condition, :]
 
 
-def filter_three_main_CF_ladders_1405_auto_input(work_table):
+def filter_3_main_CF_ladders_1405_auto_input(work_table):
     """
     filters work_table to contain only the three most popular ladders whose
     name begins with CF and have automated string input for machine 1405
@@ -207,10 +212,10 @@ def fix_0103(sensor_data, keep=True):
     sensor_data = single_non_duplicate(3, sensor_data)
     sensor_data = make_column_2_levels(sensor_data, 'Indgang 0103', 'Non Duplicate 0103', '0103 CC Group')
 
-    sensor_data = create_unique_id(sensor_data, '0103 Even CC Group')
+    sensor_data = create_unique_id(sensor_data, '0103 Even CC Group', even=True)
 
     if keep:
-        sensor_data = create_unique_id(sensor_data, '0103 Odd CC Group')
+        sensor_data = create_unique_id(sensor_data, '0103 Odd CC Group', even=False)
         sensor_data.loc[:, 'Original 0103'] = sensor_data.loc[:, 'Indgang 0103']
 
     condition = sensor_data.loc[:, '0103 Group'] != 0
@@ -335,14 +340,13 @@ def make_column_2_levels(sensor_data,
     return data
 
 
-def create_unique_id(data, column_name):
+def create_unique_id(data, column_name, even):
     """
     adds a column to the sensor data containing unique identifiers for either
     the odd or even column
     """
     return convert_non_unique_identifier_into_unique(
-        data, column_name, '0103 CC Group',
-        'Non Duplicate 0103', '0103 Group'
+        data, column_name, '0103 CC Group', 'Non Duplicate 0103', '0103 Group', even=even
     )
 
 
@@ -351,7 +355,7 @@ def convert_non_unique_identifier_into_unique(sensor_data,
                                               odd_and_even_column,
                                               non_duplicate_column,
                                               output_column,
-                                              even=True):
+                                              even):
     """
     Takes a column with non-unique cum-counted group names per JOBNUM and returns unique
     group names valid across the entire dataframe

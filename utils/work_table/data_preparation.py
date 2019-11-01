@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 
-from utils.utils import get_dummy_products
-
 
 class WorkTableCleaner:
     """
@@ -51,6 +49,15 @@ class PrepareWorkTable:
 
     def remove_breaks(self, sensor_data, breaks):
         return self._cleaner.remove_breaks(breaks, sensor_data).sort_values('StartDateTime').reset_index(drop=True)
+
+
+def get_dummy_products(data):
+    cols = data.loc[:, 'NAME'].str.split(':', expand=True).dropna()
+    data.loc[:, 'NAME'] = cols[0].apply(
+        lambda x: x[:2].lstrip().rstrip()) + '/' + cols[5].apply(
+        lambda x: x.lstrip().rstrip()
+    )
+    return cols, pd.concat([data, pd.get_dummies(data.loc[:, 'NAME'])], axis=1)
 
 
 def filter_work_table_by_work_id(work_table, reg_ex):

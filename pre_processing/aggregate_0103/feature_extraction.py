@@ -1,4 +1,4 @@
-from aggregate_0103 import aggregates as a
+from aggregations.aggregate_0103 import aggregates as a
 from utils.utils import make_column_arange
 from utils.sensor_data import feature_extraction as fsd
 from utils.sensor_data import data_preparation as sd

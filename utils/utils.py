@@ -4,6 +4,33 @@ import numpy as np
 import pandas as pd
 
 from utils.load_data import load_csv
+from utils.sensor_data import data_preparation as sd
+from utils.work_table import data_preparation as wt
+
+
+class BaseDataAdapter:
+    def __init__(self, work_table, sensor_data):
+        self.work_table = work_table
+        self.sensor_data = sensor_data
+
+
+class BaseData:
+    def __init__(self, remove_overlaps, ladder_filter):
+        self.machine = None
+        self.columns = None
+        self.sd_cleaner = None
+
+        self._folder = None
+        self._remove_overlaps = remove_overlaps
+        self._ladder_filter = ladder_filter
+
+    def get_base_data(self, work_table, sensor_data, stats=False):
+        wt_cleaner = wt.WorkTableCleaner(
+            work_table, stats=stats, remove_overlaps=self._remove_overlaps, ladder_filter=self._ladder_filter
+        )
+        self.sd_cleaner.sensor_data = sensor_data
+        wt_prep = wt.PrepareWorkTable(self.columns, stats, wt_cleaner)
+        return sd.prepare_base_data(wt_prep, self.sd_cleaner)
 
 
 class CSVReadWriter:
@@ -50,9 +77,10 @@ class PreProcess:
     """
     def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer):
         self._machine = machine
-        self._base_data = base_data
         columns = self._machine.data_generation_columns
-        self._base_data.columns = columns
+        self.base_data = base_data
+        self.base_data.columns = columns
+
         self._feature_extractor = feature_extractor
         self._read_writer = read_writer(folder=folder, columns=columns, category=category)
         self._work_table = None
@@ -61,7 +89,7 @@ class PreProcess:
     def get_base_data(self, stats=False):
         work_table = self._read_writer.read_raw_work_table()
         sensor_data = self._read_writer.read_raw_sensor_data()
-        self._work_table, self._sensor_data = self._base_data.get_base_data(
+        self._work_table, self._sensor_data = self.base_data.get_base_data(
             work_table, sensor_data, stats=stats
         )
 
@@ -119,14 +147,13 @@ def get_dummy_products(data):
 
 def get_base_dolle_directory():
     path = os.getcwd()
-    if path.split('/')[-1].lower() != 'dolle':
-        while True:
-            path = os.path.dirname(path)
-            last = path.split('/')[-1].lower()
-            if last == 'dolle':
-                break
-            if last == '/':
-                raise Exception('No Dolle Directory on the path')
+    while path.split('/')[-1].lower() != 'dolle':
+        path = os.path.dirname(path)
+        last = path.split('/')[-1].lower()
+        if last == 'dolle':
+            break
+        if last == '/':
+            raise Exception('No Dolle Directory on the path')
     return path
 
 
@@ -254,3 +281,5 @@ class Machine1405:
 
 def merge(first, second):
     return [item for sublist in [first, second] for item in sublist]
+
+

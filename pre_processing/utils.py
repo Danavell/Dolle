@@ -74,8 +74,7 @@ class BaseDataFactory:
         'BaseData 1405: 3 main auto CF, no overlaps': {},
         'BaseData 1405: all ladders, no overlaps': {},
     }
-
-    ladder_codes = dict(zip((i + 1 for i in range(len(settings.keys()))), settings.keys()))
+    ladder_codes = {i + 1: code for i, code in enumerate(settings.keys())}
 
     @classmethod
     def get_ladder_codes(cls):

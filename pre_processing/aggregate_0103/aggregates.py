@@ -4,10 +4,6 @@ from utils.sensor_data import feature_extraction as fsd
 from utils.utils import make_column_arange
 
 
-def calc_pace_diff(product, agg_stats, agg_sensor):
-    pass
-
-
 def make_aggregates(sensor_data, reg_ex, drop_first_rows=True):
     """
     Aggregates raw sensor data into final form
@@ -21,9 +17,10 @@ def make_aggregates(sensor_data, reg_ex, drop_first_rows=True):
         product_data = _make_aggregate(product_data)
         data[product] = _drop_first_rows(product_data) if drop_first_rows else product_data
 
-    all_products = _make_aggregate(sensor_data)
-    column = f'all {products.size} products'
-    data[column] = _drop_first_rows(all_products) if drop_first_rows else all_products
+    if products.size > 1:
+        all_products = _make_aggregate(sensor_data)
+        column = f'all {products.size} products'
+        data[column] = _drop_first_rows(all_products) if drop_first_rows else all_products
     return data
 
 

@@ -8,22 +8,6 @@ from utils.sensor_data import data_preparation as sd
 from utils.work_table import data_preparation as wt
 
 
-class BaseData1405FeatureExtractor:
-    def __init__(self):
-        self.data = dict()
-        self._category = None
-
-    def feature_extraction(self, work_table, sensor_data):
-        self.data['sensor_data'] = sensor_data
-        self.data['work_table'] = work_table
-
-
-class BaseDataAdapter:
-    def __init__(self, work_table, sensor_data):
-        self.work_table = work_table
-        self.sensor_data = sensor_data
-
-
 class BaseData:
     def __init__(self, remove_overlaps, ladder_filter):
         self.machine = None
@@ -34,13 +18,13 @@ class BaseData:
         self._remove_overlaps = remove_overlaps
         self._ladder_filter = ladder_filter
 
-    def get_base_data(self, work_table, sensor_data, stats=False):
+    def get_base_data(self, work_table, sensor_data, stats=False, base=False):
         wt_cleaner = wt.WorkTableCleaner(
             work_table, stats=stats, remove_overlaps=self._remove_overlaps, ladder_filter=self._ladder_filter
         )
         self.sd_cleaner.sensor_data = sensor_data
         wt_prep = wt.PrepareWorkTable(self.columns, stats, wt_cleaner)
-        return sd.prepare_base_data(wt_prep, self.sd_cleaner)
+        return sd.prepare_base_data(wt_prep, self.sd_cleaner, base_data=base)
 
 
 class CSVReadWriter:
@@ -79,41 +63,6 @@ class CSVReadWriter:
                     data[key].to_csv(path, sep=';', index=False)
         else:
             raise Exception('DIRECTORY ALREADY EXISTS')
-
-
-class PreProcess:
-    """
-    Generic class for pre-processing data into final format
-    """
-    def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer):
-        self._machine = machine
-        columns = self._machine.data_generation_columns
-        self.base_data = base_data
-        self.base_data.columns = columns
-
-        self._feature_extractor = feature_extractor
-        self._read_writer = read_writer(folder=folder, columns=columns, category=category)
-        self._work_table = None
-        self._sensor_data = None
-
-    def get_base_data(self, stats=False):
-        work_table = self._read_writer.read_raw_work_table()
-        sensor_data = self._read_writer.read_raw_sensor_data()
-        self._work_table, self._sensor_data = self.base_data.get_base_data(
-            work_table, sensor_data, stats=stats
-        )
-
-    def feature_extraction(self):
-        if hasattr(self._feature_extractor, 'feature_extraction'):
-            self._feature_extractor.feature_extraction(self._work_table, self._sensor_data, self._machine)
-
-    def save(self):
-        if hasattr(self._feature_extractor, 'data'):
-            self._read_writer.save(self._feature_extractor.data)
-
-    def get_data(self):
-        if hasattr(self._feature_extractor, 'data'):
-            return self._feature_extractor.data
 
 
 def make_column_arange(first_slice, target_column, fillna_groupby_col=None, fill='bfill'):

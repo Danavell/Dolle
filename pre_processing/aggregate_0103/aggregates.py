@@ -36,6 +36,18 @@ def _drop_first_rows(data):
     return data
 
 
+def drop_first_rows(data):
+    """
+    The first row of many JOBNUMs contain strange readings that are unrepresentative of
+    the data as a whole, implying that they should be dropped
+    """
+    data['previous_JOBNUM'] = data.loc[:, 'JOBNUM'].shift(1)
+    condition = data.loc[:, 'JOBNUM'] != data.loc[:, 'previous_JOBNUM']
+    indices = data[condition].index
+    data.drop(indices, axis=0, inplace=True)
+    return data
+
+
 def _make_aggregate(sensor_data, set_to_zero=False):
     agg_dict = {
         'JOBNUM': 'first',

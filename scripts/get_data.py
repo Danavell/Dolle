@@ -56,8 +56,8 @@ total_num_deactivations, non_unique_total_seen, total_seen, time_deltas, data, d
 )
 
 percentile_ticks = [
-        5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95
-    ]
+    5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95
+]
 
 percentiles = np.percentile(
     time_deltas, percentile_ticks

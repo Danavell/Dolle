@@ -107,9 +107,16 @@ def sensor_groupings(data):
     return data
 
 
+def make_ID(sensor_data, n=3):
+    ndp = f'Non Duplicate 010{n}'
+    filtered = sensor_data[[ndp, 'JOBNUM']].loc[sensor_data.loc[:, ndp] == 1, :].copy()
+    filtered.loc[:, 'temp'] = filtered.groupby('JOBNUM')[ndp].cumcount() + 1
+    sensor_data.loc[:, 'temp'] = filtered.loc[:, 'temp']
+    return sensor_data.groupby('JOBNUM')['temp'].fillna(method='bfill')
+
+
 def _sensor_groupings(data):
-    data['Group'] = data.groupby('JOBNUM').cumcount() + 1
-    return data['Group']
+    return data.groupby('JOBNUM').cumcount() + 1
 
 
 def cumcount_per_010n(original, outer=3):

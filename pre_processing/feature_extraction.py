@@ -1,5 +1,7 @@
 import re
 
+import pandas as pd
+
 import pre_processing.utils as ut
 import pre_processing.config_settings as cs
 
@@ -17,7 +19,7 @@ class BaseData1405FeatureExtractor:
         self.data = dict()
         self._category = None
 
-    def feature_extraction(self, work_table, sensor_data, _):
+    def feature_extraction(self, work_table, sensor_data, __, _):
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
 
@@ -66,14 +68,16 @@ class StatsFeatureExtractor0102Agg:
         sensor_data['0102 ID'] = make_column_arange(
             sensor_data, 'Non Duplicate 0102', fillna_groupby_col='JOBNUM'
         )
-
-        sensor_data.loc[:, '0103 ID'] = fsd.make_ID(sensor_data, 3)
+        sensor_data['0103 ID'] = make_column_arange(
+            sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
+        )
+        sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(sensor_data, 3)
         sensor_data = sd.get_dummies_concat(sensor_data)
 
         reg_ex = r'^[A-Z]{2}[-][1-9][A-Z][-][1-9][A-Z][-][1-9][A-Z][-][1-9]{2}[A-Z]$'
         drop_first_rows = a_0102.drop_first_rows if drop_first_rows else None
         aggs = ut.make_aggregates(
-            sensor_data, reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows
+            sensor_data, reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows,
         )
         for key in aggs.keys():
             if not re.match(r'^all (\d) products$', key):
@@ -82,22 +86,55 @@ class StatsFeatureExtractor0102Agg:
             else:
                 data = sensor_data.copy()
 
-            self.data[key] = aggs[key]
+            agg = aggs[key].copy()
+            agg.loc[:, 'rows until end'] = agg.groupby('0103 ID').cumcount(ascending=False) + 1
+            agg.loc[:, 'rows since start'] = agg.groupby('0103 ID').cumcount() + 1
 
-            time_delta_aggs = ast_0102.calc_time_since_string_in_and_deactivation(
-                data, aggs[key]
-            )
-            all_deacs, aggs_singles, aggs_multis = ast_0102.add_unique_deactivations_to_0102_IDs(
-                aggs[key], time_delta_aggs
-            )
-            self.data[f'{key} - all deacs'] = all_deacs
-            self.data[f'{key} - single rows'] = aggs_singles
-            self.data[f'{key} - multi rows'] = aggs_multis
+            no_deacs = agg.loc[agg['Non Duplicate 0101'] == 0, :]
+            deacs_sd = data.loc[
+                (data['Non Duplicate 0101'] == 1) & (data['0102 ID'].isin(agg['0102 ID'])),
+                ['Date', '0102 ID']
+            ]
 
-            percentiles = ast_0102.calc_0103_Pace_and_string_deac_t_delta_percentiles(
-                aggs[key], time_delta_aggs
+            """
+            Separate 0102 IDs with 1 and more than 1 deactivation. Slightly different functions
+            will have to be applied to both. Therefore, it makes sense to separate them as 
+            early as possible
+            """
+            single_deacs = ast_0102.calc_t_delta_and_merge(deacs_sd, agg, agg['Non Duplicate 0101'] == 1)
+            multi_deacs = ast_0102.calc_t_delta_and_merge(
+                deacs_sd, agg, agg['Non Duplicate 0101'] > 1, multi=True
             )
-            self.data[f'{key} - percentiles'] = percentiles
+
+            agg_2 = pd.concat([
+                single_deacs,
+                no_deacs,
+                multi_deacs.loc[multi_deacs.groupby('0102 ID').cumcount() + 1 == 1, :]
+            ], axis=0, sort=False)
+
+            agg_2 = agg_2.sort_values(['0102 ID', 'Date']).reset_index(drop=True)
+            agg_2.loc[agg_2.loc[:, 'Label'] > 1, 'Label'] = 1
+
+            frames = {
+                'Non-Deactivations: 0102 Pace': aggs.loc[aggs.loc[:, 'Label'] == 0, '0102 Pace'],
+                'Deactivations: time delta': aggs.loc[aggs.loc[:, 'Label'] == 1, 'Time Delta'],
+                'Non-Deactivations: rows until end, 0102 pace >= 25': aggs.loc[
+                    aggs.loc[:, '0102 Pace'] >= 25, 'rows until end'
+                ],
+                'Deactivations: rows until end': aggs.loc[aggs.loc[:, 'Label'] == 1, 'rows until end'],
+            }
+            percentiles = ut.calc_percentiles(frames)
+
+            self.data['percentiles'] = percentiles
+            self.data[key] = agg
+            self.data[f' final {key}'] = agg_2
+
+            print(f'{key} - {ast_0102.corr(percentiles)}')
+            print('---------------')
+            print(ast_0102.confusion_matrix(agg_2))
+            print('---------------')
+            print('\n')
+
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
 

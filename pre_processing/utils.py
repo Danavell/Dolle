@@ -1,3 +1,5 @@
+import pandas as pd
+
 from utils import utils as ut
 import pre_processing.config_settings as cs
 
@@ -14,6 +16,7 @@ class BaseDataFactory:
     def factory(cls, code, folder, read_writer=ut.CSVReadWriter, fix_duplicates=False):
         key = cls.ladder_codes[code]
         config = cs.settings[key]
+        config['category'] = key
         stats = config.pop('stats') if config.get('stats') else False
         base = config.pop('base') if config.get('base') else False
         drop_first_rows = config.pop('drop_first_rows') if config.get('drop_first_rows') else False
@@ -31,12 +34,12 @@ class PreProcess:
     Generic class for pre-processing data into final format
     """
     def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer):
-        self._machine = machine
+        self._machine = machine()
         columns = self._machine.data_generation_columns
         self.base_data = base_data
         self.base_data.columns = columns
 
-        self._feature_extractor = feature_extractor
+        self._feature_extractor = feature_extractor()
         self._read_writer = read_writer(folder=folder, columns=columns, category=category)
         self._work_table = None
         self._sensor_data = None
@@ -82,20 +85,34 @@ def make_aggregates(sensor_data, reg_ex, agg_column, funcs, drop_first_row_func=
     return data
 
 
-def _make_aggregate(sensor_data, agg_column, funcs, set_to_zero=False):
+def _make_aggregate(sensor_data, agg_column, funcs, set_to_zero=True):
     agg_data = sensor_data.groupby(agg_column).agg(funcs)
     agg_data = agg_data.reset_index(drop=True)
     return _set_agg_deacs_to_one(agg_data) if set_to_zero else _make_labels(agg_data)
 
 
 def _set_agg_deacs_to_one(agg_data):
-    condition = agg_data.loc[:, 'Non Duplicate 0101'] > 1
-    indices = agg_data[condition].index
-    agg_data.loc[:, 'Label'] = 0
-    agg_data.loc[indices, 'Label'] = 1
+    agg_data.loc[agg_data.loc[:, 'Non Duplicate 0101'] >= 1, 'Label'] = 1
+    agg_data.loc[agg_data.loc[:, 'Non Duplicate 0101'] == 0, 'Label'] = 0
     return agg_data
 
 
 def _make_labels(agg_data):
     agg_data.loc[:, 'Label'] = agg_data.loc[:, 'Non Duplicate 0101']
     return agg_data
+
+
+def _calc_percentile(data):
+    return pd.DataFrame(
+        np.percentile(data, [i for i in range(1, 100)]),
+        [f'{i}%' for i in range(1, 100)]
+    )
+
+
+def calc_percentiles(frames):
+    """
+    Calculates the percentiles from 0 to 99 for dataframe passed in the frames dict
+    """
+    output = pd.concat([_calc_percentile(frames[key]) for key in frames.keys()], axis=1)
+    output.columns = [key for key in frames.keys()]
+    return output

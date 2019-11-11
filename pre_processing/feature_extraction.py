@@ -111,8 +111,9 @@ class StatsFeatureExtractor0102Agg:
             }
             percentiles = ut.calc_percentiles(frames)
 
-            self.data['percentiles'] = percentiles
-            self.data[key] = agg
+            self.data[key] = dict()
+            self.data[key][key] = agg
+            self.data[key][f'{key} percentiles'] = percentiles
 
             print(f'{key} - {ast_0102.corr(percentiles)}')
             print('---------------')
@@ -140,6 +141,10 @@ class MLFeatureExtractor0102:
         sensor_data['0103 ID'] = make_column_arange(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
+        sensor_data['Indgang 0101 time'] = fsd.calc_error_time(
+            sensor_data, 'Indgang 0101', groupby_cols=['JOBNUM', '0102 ID']
+        )
+
         sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(sensor_data, 3)
         sensor_data = sd.get_dummies_concat(sensor_data)
 

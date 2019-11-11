@@ -47,7 +47,7 @@ def calculate_pace(sensor_data, columns):
     calculates the duration of each row of alarm data
     """
     for i in range(4, 7):
-        sensor_data[f'010{i} Alarm Time'] = _calc_error_time(sensor_data, f'Indgang 010{i}')
+        sensor_data[f'010{i} Alarm Time'] = calc_error_time(sensor_data, f'Indgang 010{i}')
     return sensor_data
 
 
@@ -58,8 +58,8 @@ def _gen_pace_data(sensor_data, column):
     return _to_seconds(pace)
 
 
-def _calc_error_time(sensor_data, column):
-    sensor_data['previous_Date'] = sensor_data.groupby('JOBNUM')['Date'].shift(1)
+def calc_error_time(sensor_data, column, groupby_cols='JOBNUM'):
+    sensor_data['previous_Date'] = sensor_data.groupby(groupby_cols)['Date'].shift(1)
     sensor_data = sensor_data.loc[sensor_data[column] != 0, ['previous_Date', 'Date']].copy()
     return _to_seconds(sensor_data['Date'] - sensor_data['previous_Date'])
 

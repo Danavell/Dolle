@@ -318,6 +318,7 @@ agg_funcs_0102 = {
     '0103 non_unique ID': 'first',
     '0102 ID': 'first',
     '0101 Duration': 'sum',
+    'Indgang 0101 time': 'sum',
     'Non Duplicate 0101': 'sum',
     'Non Duplicate 0103': 'sum',
     'Non Duplicate 0104': 'sum',

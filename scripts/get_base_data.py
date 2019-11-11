@@ -17,11 +17,7 @@ from utils.utils import Machine1405, make_column_arange
 
 
 BaseDataFactory.get_ladder_codes()
-# # # for i in range(1, 6):
 BaseDataFactory.factory(4, '01-01-18 to 01-01-19', fix_duplicates=True)
-
-# BaseDataFactory.factory(2, '01-01-18 to 01-01-19', fix_duplicates=True)
-
 
 # path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/' \
 #        r'Stats 1405 All ladders/agg_stats.csv'
@@ -44,12 +40,12 @@ BaseDataFactory.factory(4, '01-01-18 to 01-01-19', fix_duplicates=True)
 # CF_3D_4F_4B_12T = None
 #
 
-base_path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/' \
-            r'Stats 1405: 0102, 1 SW, 2 CF, no overlaps'
-
-path = os.path.join(base_path, 'all 3 products.csv')
-agg = pd.read_csv(path, sep=';')
-ast_0102.confusion_matrix(agg)
+# base_path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/' \
+#             r'Stats 1405: 0102, 1 SW, 2 CF, no overlaps'
+#
+# path = os.path.join(base_path, 'all 3 products.csv')
+# agg = pd.read_csv(path, sep=';')
+# ast_0102.confusion_matrix(agg)
 #
 # #
 # # machine = Machine1405()

@@ -61,6 +61,13 @@ class CSVReadWriter:
                 if isinstance(data[key], pd.DataFrame):
                     path = os.path.join(self._cat_directory, f"{key.replace('/', '-')}.csv")
                     data[key].to_csv(path, sep=';', index=False)
+                if isinstance(data[key], dict):
+                    path = os.path.join(self._cat_directory, key)
+                    if not os.path.exists(path):
+                        os.mkdir(path)
+                        for new_key in data[key].keys():
+                            new_path = os.path.join(path, f"{new_key.replace('/', '-')}.csv")
+                            data[key][new_key].to_csv(new_path, sep=';', index=False)
         else:
             raise Exception('DIRECTORY ALREADY EXISTS')
 
@@ -136,9 +143,9 @@ class Machine1405:
             'gen_shifted_columns_1': merge(['Date'], self.current_1_to_6),
             'next_shifted': merge(['next_Date', 'next_0101'], self.next_4_to_6),
             'remove_nans_and_floats': merge(merge(self.previous_1_to_6, merge(['next_0101'], self.next_4_to_6)),
-                                              self.non_duplicates_1_to_6),
+                                            self.non_duplicates_1_to_6),
             'init_columns': merge(['Non Duplicate 0103'], merge(self.previous_1_to_6,
-                           merge(['f_0101'], self.next_4_to_6))),
+                            merge(['f_0101'], self.next_4_to_6))),
             '_gen_shifted_columns_-1': merge(['Date', 'Indgang 0101'], [f'Indgang 010{i}' for i in range(4, 7)]),
             'convert_to_seconds': merge(['0101 Down Time'], [f'010{i} Alarm Time' for i in range(4, 7)]),
             'columns_to_keep': [

@@ -49,7 +49,7 @@ base_path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/
 
 path = os.path.join(base_path, 'all 3 products.csv')
 agg = pd.read_csv(path, sep=';')
-
+ast_0102.confusion_matrix(agg)
 #
 # #
 # # machine = Machine1405()

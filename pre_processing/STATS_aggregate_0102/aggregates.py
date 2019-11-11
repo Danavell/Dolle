@@ -71,7 +71,7 @@ def add_unique_deactivations_to_0102_IDs(aggs, time_delta_aggs):
     return aggs_concat, aggs_singles, aggs_multis
 
 
-def confusion_matrix(agg):
+def confusion_matrix(agg, train=True):
     columns = ['0102 Pace', 'Label', '0102 ID']
     agg[[f'next_{column}' for column in columns]] = agg.groupby('JOBNUM')[columns].shift(-1)
 
@@ -82,7 +82,7 @@ def confusion_matrix(agg):
     over_flow_condition = (agg['Label'] == 1) & \
                           (agg['0101 Duration'] + agg['Time Delta'] > agg['0102 Pace']) & \
                           (agg['next_Label'] == 0) & \
-                          (agg['next 0102 Pace'] >= 25)
+                          (agg['next_0102 Pace'] >= 25)
 
     false_neg_condition = (agg['0102 Pace'] >= 25) & \
                           (agg['Label'] == 0) & \
@@ -92,6 +92,11 @@ def confusion_matrix(agg):
     false_neg = len(agg[false_neg_condition].index)
     true_neg = len(agg.loc[(agg.loc[:, 'Time Delta'] >= 25) & (agg.loc[:, 'Label'] == 1)].index)
     false_pos = len(agg.loc[(agg.loc[:, 'Time Delta'] < 25) & (agg.loc[:, 'Label'] == 1)].index)
+    if train:
+        true_pos = round(true_pos / 5)
+        false_neg = round(false_neg / 5)
+        false_pos = round(false_pos / 5)
+        true_neg = round(true_neg / 5)
     return np.array(
         [[true_pos, false_neg],
          [false_pos, true_neg]]

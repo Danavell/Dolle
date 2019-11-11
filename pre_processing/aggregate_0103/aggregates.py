@@ -4,26 +4,6 @@ from utils.sensor_data import feature_extraction as fsd
 from utils.utils import make_column_arange
 
 
-def make_aggregates(sensor_data, reg_ex, drop_first_rows=True):
-    """
-    Aggregates raw sensor data into final form
-    """
-    data = dict()
-    sensor_data['0103 ID'] = sensor_data.loc[:, '0103 Group b-filled']
-    products = sensor_data.columns[sensor_data.columns.str.match(reg_ex)]
-
-    for product in products:
-        product_data = sensor_data.loc[sensor_data.loc[:, product] == 1].copy()
-        product_data = _make_aggregate(product_data)
-        data[product] = _drop_first_rows(product_data) if drop_first_rows else product_data
-
-    if products.size > 1:
-        all_products = _make_aggregate(sensor_data)
-        column = f'all {products.size} products'
-        data[column] = _drop_first_rows(all_products) if drop_first_rows else all_products
-    return data
-
-
 def _drop_first_rows(data):
     """
     The first row of many JOBNUMs contain strange readings that are unrepresentative of
@@ -167,9 +147,7 @@ def _duration_010n_jam_greater_than_n(n, sensor_data, col):
     return set(greater_than_n[f'010{col} Jam'])
 
 
-def make_n_length_jam_durations(sensor_data):
-    groupby = sensor_data.groupby('JOBNUM')
-
+def temp(sensor_data):
     if '0102 Group' not in sensor_data.columns and '0103 Group' not in sensor_data.columns:
         sensor_data = fsd.sensor_groupings(sensor_data)
 
@@ -181,6 +159,9 @@ def make_n_length_jam_durations(sensor_data):
         if f'next_010{i}' not in sensor_data.columns:
             sensor_data[f'next_010{i}'] = groupby[f'Indgang 010{i}'].shift(-1)
 
+
+def make_n_length_jam_durations(sensor_data, end):
+    groupby = sensor_data.groupby('JOBNUM')
     for i in range(2, 4):
         columns = [
             'JOBNUM', f'Indgang 010{i}', f'previous_010{i}', f'next_010{i}',
@@ -189,14 +170,14 @@ def make_n_length_jam_durations(sensor_data):
         sliced = sensor_data.loc[:, columns].copy()
         sensor_data[f'010{i} Jam'] = _make_010n_jam_groups(sliced, n=i)
 
-    sensor_data = _make_new_jam_durations_loop(sensor_data, '0102 Jam', 2)
-    sensor_data = _make_new_jam_durations_loop(sensor_data, '0103 Jam', 3)
+    sensor_data = _make_new_jam_durations_loop(sensor_data, '0102 Jam', 2, end)
+    sensor_data = _make_new_jam_durations_loop(sensor_data, '0103 Jam', 3, end)
     return sensor_data
 
 
-def _make_new_jam_durations_loop(sensor_data, label, col):
+def _make_new_jam_durations_loop(sensor_data, label, col, num):
     sensor_data = _make_non_duplicate_jams(sensor_data, label, col)
-    for i in range(2, 21):
+    for i in range(2, num + 1):
         sensor_data = _make_new_jam_durations(i, sensor_data, col)
     return sensor_data
 

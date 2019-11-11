@@ -15,11 +15,11 @@ from utils.utils import make_column_arange
 
 
 class BaseData1405FeatureExtractor:
-    def __init__(self):
+    def __init__(self, _):
         self.data = dict()
         self._category = None
 
-    def feature_extraction(self, work_table, sensor_data, __, _):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
 
@@ -34,7 +34,7 @@ class StatsFeatureExtractor:
     def __init__(self):
         self.data = dict()
 
-    def feature_extraction(self, work_table, sensor_data, machine, _):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
@@ -61,24 +61,12 @@ class StatsFeatureExtractor0102Agg:
     def __init__(self):
         self.data = dict()
 
-    def feature_extraction(self, work_table, sensor_data, machine, drop_first_rows):
-        columns = machine.data_generation_columns
-        sensor_data = fsd.create_non_duplicates(sensor_data)
-        sensor_data = fsd.calculate_pace(sensor_data, columns)
-        sensor_data['0102 ID'] = make_column_arange(
-            sensor_data, 'Non Duplicate 0102', fillna_groupby_col='JOBNUM'
-        )
-        sensor_data['0103 ID'] = make_column_arange(
-            sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
-        )
-        sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(sensor_data, 3)
-        sensor_data = sd.get_dummies_concat(sensor_data)
-
-        reg_ex = r'^[A-Z]{2}[-][1-9][A-Z][-][1-9][A-Z][-][1-9][A-Z][-][1-9]{2}[A-Z]$'
-        drop_first_rows = a_0102.drop_first_rows if drop_first_rows else None
-        aggs = ut.make_aggregates(
-            sensor_data, reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows,
-        )
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
+        base = MLFeatureExtractor0102()
+        base.feature_extraction(work_table, sensor_data, machine, meta)
+        aggs = base.data
+        sensor_data = aggs.pop('sensor_data')
+        work_table = aggs.pop('work_table')
         for key in aggs.keys():
             if not re.match(r'^all (\d) products$', key):
                 condition = sensor_data.loc[:, key] == 1
@@ -106,32 +94,29 @@ class StatsFeatureExtractor0102Agg:
                 deacs_sd, agg, agg['Non Duplicate 0101'] > 1, multi=True
             )
 
-            agg_2 = pd.concat([
+            agg = pd.concat([
                 single_deacs,
                 no_deacs,
                 multi_deacs.loc[multi_deacs.groupby('0102 ID').cumcount() + 1 == 1, :]
             ], axis=0, sort=False)
-
-            agg_2 = agg_2.sort_values(['0102 ID', 'Date']).reset_index(drop=True)
-            agg_2.loc[agg_2.loc[:, 'Label'] > 1, 'Label'] = 1
+            agg = agg.sort_values(['0102 ID', 'Date']).reset_index(drop=True)
 
             frames = {
-                'Non-Deactivations: 0102 Pace': aggs.loc[aggs.loc[:, 'Label'] == 0, '0102 Pace'],
-                'Deactivations: time delta': aggs.loc[aggs.loc[:, 'Label'] == 1, 'Time Delta'],
-                'Non-Deactivations: rows until end, 0102 pace >= 25': aggs.loc[
-                    aggs.loc[:, '0102 Pace'] >= 25, 'rows until end'
-                ],
-                'Deactivations: rows until end': aggs.loc[aggs.loc[:, 'Label'] == 1, 'rows until end'],
+                'ND: 0102 Pace': agg.loc[agg.loc[:, 'Label'] == 0, '0102 Pace'],
+                'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
+                'ND: until end >= 25': agg.loc[agg['0102 Pace'] >= 25, 'rows until end'],
+                'D: until end': agg.loc[agg.loc[:, 'Label'] == 1, 'rows until end'],
+                'ND: since start >= 25': agg.loc[agg['0102 Pace'] >= 25, 'rows since start'],
+                'D: since start': agg.loc[agg.loc[:, 'Label'] == 1, 'rows since start'],
             }
             percentiles = ut.calc_percentiles(frames)
 
             self.data['percentiles'] = percentiles
             self.data[key] = agg
-            self.data[f' final {key}'] = agg_2
 
             print(f'{key} - {ast_0102.corr(percentiles)}')
             print('---------------')
-            print(ast_0102.confusion_matrix(agg_2))
+            print(ast_0102.confusion_matrix(agg))
             print('---------------')
             print('\n')
 
@@ -143,48 +128,77 @@ class MLFeatureExtractor0102:
     def __init__(self):
         self.data = None
 
-    def feature_extraction(self, work_table, sensor_data, machine, drop_first_rows=None):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
+        drop_first_rows = a_0102.drop_first_rows if meta.get('drop_first') else False
+
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
         sensor_data['0102 ID'] = make_column_arange(
             sensor_data, 'Non Duplicate 0102', fillna_groupby_col='JOBNUM'
         )
-
-        sensor_data.loc[:, '0103 ID'] = fsd.make_ID(sensor_data, 3)
+        sensor_data['0103 ID'] = make_column_arange(
+            sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
+        )
+        sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(sensor_data, 3)
         sensor_data = sd.get_dummies_concat(sensor_data)
 
-        reg_ex = r'^[A-Z]{2}[/][1-9][A-Z][/][1-9][A-Z][/][1-9][A-Z][/][1-9]{2}[A-Z]$'
-        drop_first_rows = a_0102.drop_first_rows if drop_first_rows else False
         self.data = ut.make_aggregates(
-            sensor_data, reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows
+            sensor_data, cs.product_col_reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows
         )
-
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
+
+
+class StatsFeatureExtractor0103Agg:
+    def __init__(self):
+        self.data = None
+
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
+        data = dict()
+        base = MLFeatureExtractor0103()
+        base.feature_extraction(work_table, sensor_data, machine, meta)
+
+        sensor_data = base.data.pop('sensor_data')
+        aggs = base.data
+        for key in aggs.keys():
+            if not re.match(r'^all (\d) products$', key):
+                condition = sensor_data.loc[:, key] == 1
+                data = sensor_data.loc[condition, :].copy()
+            else:
+                data = sensor_data.copy()
+
+            agg = base.data[key].copy()
+
+        data['work_table'] = base.data['work_table']
 
 
 class MLFeatureExtractor0103:
     def __init__(self):
         self.data = None
 
-    def feature_extraction(self, work_table, sensor_data, machine, drop_first_rows=None):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
+        jam = meta.get('jam')
+        drop_first_rows = a_0103.drop_first_rows if meta.get('drop_first') else False
+
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.sensor_groupings(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
 
-        sensor_data['0103 Group b-filled'] = make_column_arange(
+        sensor_data['0103 ID'] = make_column_arange(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
-        sensor_data = a_0103.make_n_length_jam_durations(sensor_data)
+        funcs = cs.base_agg_funcs_0103
+        if jam:
+            num = 20
+            sensor_data = a_0103.make_n_length_jam_durations(sensor_data, num)
+            for i in range(num, 1, -1):
+                funcs[f'Sum 0102 Jam >= {i}'] = 'sum'
 
         sensor_data = sd.get_dummies_concat(sensor_data)
-        reg_ex = r'^[A-Z]{2}[/][1-9][A-Z][/][1-9][A-Z][/][1-9][A-Z][/][1-9]{2}[A-Z]$'
-        drop_first_rows = a_0103.drop_first_rows if drop_first_rows else False
         self.data = ut.make_aggregates(
-            sensor_data, reg_ex, '0103 ID', cs.agg_funcs_0103, drop_first_rows
+            sensor_data, cs.product_col_reg_ex, '0103 ID', funcs, drop_first_rows
         )
-        self.data = a_0103.make_aggregates(sensor_data, reg_ex, drop_first_rows)
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table

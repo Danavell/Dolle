@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from utils import utils as ut
@@ -17,16 +18,19 @@ class BaseDataFactory:
         key = cls.ladder_codes[code]
         config = cs.settings[key]
         config['category'] = key
-        stats = config.pop('stats') if config.get('stats') else False
-        base = config.pop('base') if config.get('base') else False
-        drop_first_rows = config.pop('drop_first_rows') if config.get('drop_first_rows') else False
+        config['base_data'] = config.get('base_data')(
+            config.pop('remove_overlaps'), config.pop('ladder_filter')
+        )
+        meta = config.pop('meta')
+        stats = meta.pop('stats') if meta.get('stats') else False
+        base = meta.pop('base') if meta.get('base') else False
         sd_cleaner = config.pop('sd_cleaner')(fix_duplicates=fix_duplicates)
         pre_process = PreProcess(folder=folder, read_writer=read_writer, **config)
         pre_process.base_data.sd_cleaner = sd_cleaner
         pre_process.get_base_data(stats=stats, base=base)
-        pre_process.feature_extraction(drop_first_rows=drop_first_rows)
+        pre_process.feature_extraction(meta=meta)
         pre_process.save()
-        return pre_process
+        return pre_process.get_data()
 
 
 class PreProcess:
@@ -51,10 +55,10 @@ class PreProcess:
             work_table, sensor_data, stats=stats, base=base
         )
 
-    def feature_extraction(self, drop_first_rows):
+    def feature_extraction(self, meta):
         if hasattr(self._feature_extractor, 'feature_extraction'):
             self._feature_extractor.feature_extraction(
-                self._work_table, self._sensor_data, self._machine, drop_first_rows
+                self._work_table, self._sensor_data, self._machine, meta
             )
 
     def save(self):

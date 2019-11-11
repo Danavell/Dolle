@@ -72,8 +72,24 @@ def add_unique_deactivations_to_0102_IDs(aggs, time_delta_aggs):
 
 
 def confusion_matrix(agg):
+    columns = ['0102 Pace', 'Label', '0102 ID']
+    agg[[f'next_{column}' for column in columns]] = agg.groupby('JOBNUM')[columns].shift(-1)
+
+    """
+    Some Deactivations spill into the next 0102 ID. The following two conditions remove
+    these rows to prevent them distorting the confusion matrix
+    """
+    over_flow_condition = (agg['Label'] == 1) & \
+                          (agg['0101 Duration'] + agg['Time Delta'] > agg['0102 Pace']) & \
+                          (agg['next_Label'] == 0) & \
+                          (agg['next 0102 Pace'] >= 25)
+
+    false_neg_condition = (agg['0102 Pace'] >= 25) & \
+                          (agg['Label'] == 0) & \
+                          (agg['0102 ID'].isin(agg.loc[~over_flow_condition, 'next_0102 ID']))
+
     true_pos = len(agg.loc[agg.loc[:, 'Label'] == 0].index)
-    false_neg = len(agg.loc[(agg.loc[:, '0102 Pace'] >= 25) & (agg.loc[:, 'Label'] == 0)].index)
+    false_neg = len(agg[false_neg_condition].index)
     true_neg = len(agg.loc[(agg.loc[:, 'Time Delta'] >= 25) & (agg.loc[:, 'Label'] == 1)].index)
     false_pos = len(agg.loc[(agg.loc[:, 'Time Delta'] < 25) & (agg.loc[:, 'Label'] == 1)].index)
     return np.array(
@@ -83,11 +99,11 @@ def confusion_matrix(agg):
 
 
 def corr(percentiles):
-    a = percentiles[['Non-Deactivations: 0102 Pace']]
+    a = percentiles[['ND: 0102 Pace']]
     a['Label'] = 0
     a.columns = ['Time', 'Label']
 
-    b = percentiles[['Deactivations: time delta']]
+    b = percentiles[['D: time delta']]
     b['Label'] = 1
     b.columns = ['Time', 'Label']
     return pd.concat([a, b], axis=0, sort=False).corr().iloc[1, 0]

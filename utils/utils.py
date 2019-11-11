@@ -32,8 +32,10 @@ class CSVReadWriter:
     Handles all csv read write operations
     """
     def __init__(self, folder, columns, category):
-        self._folder = folder
-        self._dir = os.path.join(get_csv_directory(), self._folder)
+        self.folder = folder
+        self.stats_folder = None
+
+        self._dir = os.path.join(get_csv_directory(), self.folder)
         self._columns = columns
         self._category = category
         self._cat_directory = os.path.join(self._dir, self._category)
@@ -53,6 +55,14 @@ class CSVReadWriter:
 
     def read_work_table(self):
         return pd.read_csv(self._work_table_pat, sep=';')
+
+    def check_stats_exist(self):
+        stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
+        return os.path.exists(stats_path)
+
+    def read_agg_stats(self):
+        stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
+        return pd.read_csv(stats_path, sep=';')
 
     def save(self, data):
         if not os.path.exists(self._cat_directory):

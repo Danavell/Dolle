@@ -22,6 +22,7 @@ class BaseDataFactory:
             config.pop('remove_overlaps'), config.pop('ladder_filter')
         )
         meta = config.pop('meta')
+        config['stats_folder'] = meta.pop('stats_folder') if meta.get('stats_folder') else False
         stats = meta.pop('stats') if meta.get('stats') else False
         base = meta.pop('base') if meta.get('base') else False
         sd_cleaner = config.pop('sd_cleaner')(fix_duplicates=fix_duplicates)
@@ -37,7 +38,7 @@ class PreProcess:
     """
     Generic class for pre-processing data into final format
     """
-    def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer):
+    def __init__(self, folder, category, machine, base_data, feature_extractor, read_writer, stats_folder):
         self._machine = machine()
         columns = self._machine.data_generation_columns
         self.base_data = base_data
@@ -45,6 +46,7 @@ class PreProcess:
 
         self._feature_extractor = feature_extractor()
         self._read_writer = read_writer(folder=folder, columns=columns, category=category)
+        self._stats_folder = stats_folder
         self._work_table = None
         self._sensor_data = None
 
@@ -57,6 +59,20 @@ class PreProcess:
 
     def feature_extraction(self, meta):
         if hasattr(self._feature_extractor, 'feature_extraction'):
+            if self._stats_folder:
+                self._read_writer.stats_folder = self._stats_folder
+                if not self._read_writer.check_stats_exist():
+                    print('CREATING STATS FOLDER')
+                    BaseDataFactory.factory(
+                        code=list(cs.settings.keys()).index(self._stats_folder) + 1,
+                        folder=self._read_writer.folder,
+                        read_writer=type(self._read_writer),
+                        fix_duplicates=self.base_data.sd_cleaner.fix_duplicates
+                    )
+                else:
+                    print('STATS FOLDER ALREADY EXISTS')
+                self._feature_extractor.stats = self._read_writer.read_agg_stats()
+
             self._feature_extractor.feature_extraction(
                 self._work_table, self._sensor_data, self._machine, meta
             )

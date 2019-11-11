@@ -1,5 +1,6 @@
 import re
 
+import numpy as np
 import pandas as pd
 
 import pre_processing.utils as ut
@@ -19,7 +20,7 @@ class BaseData1405FeatureExtractor:
         self.data = dict()
         self._category = None
 
-    def feature_extraction(self, work_table, sensor_data, machine, meta):
+    def feature_extraction(self, work_table, sensor_data, _, __):
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
 
@@ -34,7 +35,7 @@ class StatsFeatureExtractor:
     def __init__(self):
         self.data = dict()
 
-    def feature_extraction(self, work_table, sensor_data, machine, meta):
+    def feature_extraction(self, work_table, sensor_data, machine, _):
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
@@ -60,6 +61,7 @@ class StatsFeatureExtractor:
 class StatsFeatureExtractor0102Agg:
     def __init__(self):
         self.data = dict()
+        self.stats = None
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
         base = MLFeatureExtractor0102()
@@ -67,12 +69,22 @@ class StatsFeatureExtractor0102Agg:
         aggs = base.data
         sensor_data = aggs.pop('sensor_data')
         work_table = aggs.pop('work_table')
+
+        products = []
         for key in aggs.keys():
             if not re.match(r'^all (\d) products$', key):
                 condition = sensor_data.loc[:, key] == 1
                 data = sensor_data.loc[condition, :].copy()
+                products.append(key)
+                total_duration = self.stats.loc[self.stats['Product'] == key, ['Job Length(s)']]\
+                    .astype(float)\
+                    .squeeze()
             else:
                 data = sensor_data.copy()
+                total_duration = self.stats.loc[self.stats['Product'].isin(products), ['Job Length(s)']]\
+                    .astype(float)\
+                    .squeeze()
+                total_duration = np.sum(total_duration)
 
             agg = aggs[key].copy()
             agg.loc[:, 'rows until end'] = agg.groupby('0103 ID').cumcount(ascending=False) + 1
@@ -115,9 +127,18 @@ class StatsFeatureExtractor0102Agg:
             self.data[key][key] = agg
             self.data[key][f'{key} percentiles'] = percentiles
 
-            print(f'{key} - {ast_0102.corr(percentiles)}')
+            conf = ast_0102.confusion_matrix(agg, train=False)
+            total_alarms = conf[0, 1] + conf[1, 1]
+            avg_time_per_alarm = total_duration / total_alarms
+
+            print(key)
             print('---------------')
             print(ast_0102.confusion_matrix(agg))
+            print('---------------')
+            print(f'precision: {conf[1, 1] / (conf[0, 1] + conf[1, 1])}')
+            print(f'recall: {conf[1, 1] / (conf[1, 0] + conf[1, 1])}')
+            print(f'average time between alarms: {avg_time_per_alarm}')
+            print(f'correlation deacs 0102 Pace: {ast_0102.corr(percentiles)}')
             print('---------------')
             print('\n')
 
@@ -157,10 +178,9 @@ class MLFeatureExtractor0102:
 
 class StatsFeatureExtractor0103Agg:
     def __init__(self):
-        self.data = None
+        self.data = dict()
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
-        data = dict()
         base = MLFeatureExtractor0103()
         base.feature_extraction(work_table, sensor_data, machine, meta)
 
@@ -175,7 +195,7 @@ class StatsFeatureExtractor0103Agg:
 
             agg = base.data[key].copy()
 
-        data['work_table'] = base.data['work_table']
+        self.data['work_table'] = base.data['work_table']
 
 
 class MLFeatureExtractor0103:

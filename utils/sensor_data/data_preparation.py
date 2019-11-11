@@ -20,14 +20,14 @@ class SensorDataCleaner1405:
             'Indgang 0104', 'Indgang 0105', 'Indgang 0106'
         ]
         self.sensor_data = None
-        self._fix_duplicates = fix_duplicates
+        self.fix_duplicates = fix_duplicates
 
     def prep_sensor_data(self, work_table):
         self.sensor_data = filter_sensor_data(work_table, self.sensor_data)
         self.sensor_data['Indgang 0101'] = abs(self.sensor_data['Indgang 0101'] - 1)
         self.sensor_data = single_non_duplicate(1, self.sensor_data)
         self.sensor_data = calc_on_off_data(self.sensor_data)
-        if self._fix_duplicates:
+        if self.fix_duplicates:
             self.sensor_data = fix_0103(self.sensor_data)
         return self.sensor_data
 

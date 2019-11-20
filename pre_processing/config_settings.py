@@ -338,6 +338,7 @@ agg_funcs_0102 = {
     'JOBNUM': 'first',
     'Date': 'first',
     '0103 ID': 'first',
+    'Time Since Last 0103': 'first',
     '0103 non_unique ID': 'first',
     '0102 ID': 'first',
     '0101 Duration': 'sum',

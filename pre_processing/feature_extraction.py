@@ -65,7 +65,7 @@ class StatsFeatureExtractor0102Agg:
         self.stats = None
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
-        n = meta.get('n', 50)
+        n = meta.get('n', 25)
         base = MLFeatureExtractor0102()
         base.feature_extraction(work_table, sensor_data, machine, meta)
         aggs = base.data
@@ -89,10 +89,12 @@ class StatsFeatureExtractor0102Agg:
             frames = {
                 'ND: 0102 Pace': agg.loc[agg.loc[:, 'Label'] == 0, '0102 Pace'],
                 'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
-                'D: sum hi pace 30 r': agg.loc[
-                    (agg['Label'] == 1) & (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
                 'ND: sum hi pace 30 r': agg.loc[
                     (agg['Label'] == 0) & (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
+                'D: sum hi pace 30 r': agg.loc[
+                    (agg['Label'] == 1) & (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
+                'ND: Time since 0103': agg.loc[agg['Label'] == 0, 'Time Since Last 0103'],
+                'D: Time since 0103': agg.loc[agg['Label'] == 1, 'Time Since Last 0103'],
                 f'ND: until end >= {n}': agg.loc[agg['0102 Pace'] >= n, 'rows until end'],
                 'D: until end': agg.loc[agg.loc[:, 'Label'] == 1, 'rows until end'],
                 f'ND: since start >= {n}': agg.loc[agg['0102 Pace'] >= n, 'rows since start'],
@@ -129,7 +131,7 @@ class MLFeatureExtractor0102:
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
         drop_first_rows = a_0102.drop_first_rows if meta.get('drop_first') else False
-        n = meta.get('n', 50)
+        n = meta.get('n', 25)
 
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
@@ -140,6 +142,12 @@ class MLFeatureExtractor0102:
         sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
+
+        sensor_data['0103 ID'] = sensor_data['0103 ID'].fillna(-1)
+        sensor_data['prev_0103 ID'] = sensor_data.groupby('JOBNUM')['0103 ID'].shift(1)
+        sensor_data = a_0102.give_unique_0103_ids_end_jobnum(sensor_data)
+        sensor_data = a_0102.calc_time_delta_last_ladder_out(sensor_data)
+
         sensor_data['Indgang 0101 time'] = fsd.calc_error_time(
             sensor_data, 'Indgang 0101', groupby_cols=['JOBNUM', '0102 ID']
         )
@@ -171,8 +179,8 @@ class MLFeatureExtractor0102:
             will have to be applied to both. Therefore, it makes sense to separate them as 
             early as possible
             """
-            single_deacs = ast_0102.calc_t_delta_and_merge(deacs_sd, agg, agg['Non Duplicate 0101'] == 1)
-            multi_deacs = ast_0102.calc_t_delta_and_merge(
+            single_deacs = a_0102.calc_t_delta_and_merge(deacs_sd, agg, agg['Non Duplicate 0101'] == 1)
+            multi_deacs = a_0102.calc_t_delta_and_merge(
                 deacs_sd, agg, agg['Non Duplicate 0101'] > 1, multi=True
             )
 
@@ -193,7 +201,7 @@ class MLFeatureExtractor0102:
             agg[f'0102 Pace >= {n} ID'] = agg[f'0102 Pace >= {n} ID'].fillna(0).astype(int)
             agg[f'0102 Pace >= {n} Count'] = 0
             agg.loc[indices, f'0102 Pace >= {n} Count'] = 1
-            agg = ast_0102.sum_num_pace_ins_larger_than_n(agg, n)
+            agg = a_0102.sum_num_pace_ins_larger_than_n(agg, n)
 
             self.data[key] = agg
 

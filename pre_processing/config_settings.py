@@ -3,6 +3,9 @@ from utils import utils as ut
 from utils.sensor_data import data_preparation as sd
 from utils.work_table import data_preparation as wt
 
+stats_1405 = 'Stats 1405: all ladders, no overlaps'
+pace_0102_gte_n = 25
+
 settings = {
     'Stats 1405: all ladders, no overlaps': {
         'machine': ut.Machine1405,
@@ -23,7 +26,8 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': True
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 1 SW, no overlaps, drop first rows': {
@@ -35,7 +39,8 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
             'drop_first': True,
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 1 SW, 2 CF, no overlaps': {
@@ -46,7 +51,8 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 1 SW, 2 CF, no overlaps, drop first rows': {
@@ -58,7 +64,8 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
             'drop_first': True,
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 1 SW, 3 CF, no overlaps': {
@@ -69,7 +76,8 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 1 SW, 3 CF, no overlaps, drop first rows': {
@@ -81,7 +89,8 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
             'drop_first': True,
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 3 CF, no overlaps': {
@@ -92,7 +101,8 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'Stats 1405: 0102, 3 CF, no overlaps, drop first rows': {
@@ -104,7 +114,8 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
             'drop_first': True,
-            'stats_folder': 'Stats 1405: all ladders, no overlaps'
+            'stats_folder': stats_1405,
+            'n': pace_0102_gte_n,
         }
     },
     'MLAgg0103 1405: 1 SW, no overlaps': {

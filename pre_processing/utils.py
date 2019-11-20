@@ -14,7 +14,7 @@ class BaseDataFactory:
             print(f'{i + 1}. {code}')
 
     @classmethod
-    def factory(cls, code, folder, read_writer=ut.CSVReadWriter, fix_duplicates=False):
+    def factory(cls, code, folder, read_writer=ut.CSVReadWriter, fix_duplicates=False, save=True):
         key = cls.ladder_codes[code]
         config = cs.settings[key]
         config['category'] = key
@@ -30,7 +30,8 @@ class BaseDataFactory:
         pre_process.base_data.sd_cleaner = sd_cleaner
         pre_process.get_base_data(stats=stats, base=base)
         pre_process.feature_extraction(meta=meta)
-        pre_process.save()
+        if save:
+            pre_process.save()
         return pre_process.get_data()
 
 

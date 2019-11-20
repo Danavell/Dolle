@@ -6,13 +6,14 @@ import pandas as pd
 import pre_processing.utils as ut
 import pre_processing.config_settings as cs
 
+
 from pre_processing.aggregate_0102 import aggregates as a_0102
 from pre_processing.aggregate_0103 import aggregates as a_0103
 from pre_processing.STATS_aggregate_0102 import aggregates as ast_0102
 from utils.sensor_data import data_preparation as sd
 from utils.sensor_data import feature_extraction as fsd
 from utils.STATS import STATS as st
-from utils.utils import make_column_arange
+from utils.utils import make_column_arange_gte
 
 
 class BaseData1405FeatureExtractor:
@@ -95,7 +96,6 @@ class StatsFeatureExtractor0102Agg:
                 (data['Non Duplicate 0101'] == 1) & (data['0102 ID'].isin(agg['0102 ID'])),
                 ['Date', '0102 ID']
             ]
-
             """
             Separate 0102 IDs with 1 and more than 1 deactivation. Slightly different functions
             will have to be applied to both. Therefore, it makes sense to separate them as 
@@ -113,9 +113,25 @@ class StatsFeatureExtractor0102Agg:
             ], axis=0, sort=False)
             agg = agg.sort_values(['0102 ID', 'Date']).reset_index(drop=True)
 
+            """
+            Creates unique IDs for all aggregates that have an 0102 pace >= n. Also creates a
+            column with the value of 1 at the same row. This intended for summing the number
+            of rows n_num_rows before each unique 0102 pace >= n ID
+            """
+            indices = agg[agg['0102 Pace'] >= 25].index
+            agg.loc[indices, '0102 Pace >= 25 ID'] = np.arange(1, len(indices) + 1)
+            agg['0102 Pace >= 25 ID'] = agg['0102 Pace >= 25 ID'].fillna(0).astype(int)
+            agg['0102 Pace >= 25 Count'] = 0
+            agg.loc[indices, '0102 Pace >= 25 Count'] = 1
+            agg = ast_0102.sum_num_pace_ins_larger_than_n(agg, 25)
+
             frames = {
                 'ND: 0102 Pace': agg.loc[agg.loc[:, 'Label'] == 0, '0102 Pace'],
                 'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
+                'D: sum hi pace 30 r': agg.loc[
+                    (agg['Label'] == 1) & (agg['0102 Pace'] >= 25), '0102 Sum Pace >= 25'],
+                'ND: sum hi pace 30 r': agg.loc[
+                    (agg['Label'] == 0) & (agg['0102 Pace'] >= 25), '0102 Sum Pace >= 25'],
                 'ND: until end >= 25': agg.loc[agg['0102 Pace'] >= 25, 'rows until end'],
                 'D: until end': agg.loc[agg.loc[:, 'Label'] == 1, 'rows until end'],
                 'ND: since start >= 25': agg.loc[agg['0102 Pace'] >= 25, 'rows since start'],
@@ -156,10 +172,10 @@ class MLFeatureExtractor0102:
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
-        sensor_data['0102 ID'] = make_column_arange(
+        sensor_data['0102 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0102', fillna_groupby_col='JOBNUM'
         )
-        sensor_data['0103 ID'] = make_column_arange(
+        sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
         sensor_data['Indgang 0101 time'] = fsd.calc_error_time(
@@ -211,7 +227,7 @@ class MLFeatureExtractor0103:
         sensor_data = fsd.sensor_groupings(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
 
-        sensor_data['0103 ID'] = make_column_arange(
+        sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
         funcs = cs.base_agg_funcs_0103

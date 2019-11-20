@@ -44,17 +44,17 @@ class CSVReadWriter:
 
     def read_raw_sensor_data(self):
         return pd.read_csv(
-            os.path.join(self._dir, 'sensor_data.csv'), sep=';', parse_dates=['Date'], infer_datetime_format=True
+            os.path.join(self._dir, 'sensor_data.csv'), sep=',', parse_dates=['Date'], infer_datetime_format=True
         )
 
     def read_sensor_data(self):
-        return pd.read_csv(self._sensor_path, sep=';')
+        return pd.read_csv(self._sensor_path, sep=',')
 
     def read_raw_work_table(self):
         return load_csv.read_work_table(os.path.join(self._dir, 'work_table.csv'), columns=self._columns)
 
     def read_work_table(self):
-        return pd.read_csv(self._work_table_pat, sep=';')
+        return pd.read_csv(self._work_table_pat, sep=',')
 
     def check_stats_exist(self):
         stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
@@ -62,7 +62,7 @@ class CSVReadWriter:
 
     def read_agg_stats(self):
         stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
-        return pd.read_csv(stats_path, sep=';')
+        return pd.read_csv(stats_path, sep=',')
 
     def save(self, data):
         if not os.path.exists(self._cat_directory):
@@ -70,19 +70,19 @@ class CSVReadWriter:
             for key in data.keys():
                 if isinstance(data[key], pd.DataFrame):
                     path = os.path.join(self._cat_directory, f"{key.replace('/', '-')}.csv")
-                    data[key].to_csv(path, sep=';', index=False)
+                    data[key].to_csv(path, sep=',', index=False)
                 if isinstance(data[key], dict):
                     path = os.path.join(self._cat_directory, key)
                     if not os.path.exists(path):
                         os.mkdir(path)
                         for new_key in data[key].keys():
                             new_path = os.path.join(path, f"{new_key.replace('/', '-')}.csv")
-                            data[key][new_key].to_csv(new_path, sep=';', index=False)
+                            data[key][new_key].to_csv(new_path, sep=',', index=False)
         else:
             raise Exception('DIRECTORY ALREADY EXISTS')
 
 
-def make_column_arange(first_slice, target_column, fillna_groupby_col=None, fill='bfill'):
+def make_column_arange_gte(first_slice, target_column, fillna_groupby_col=None, fill='bfill'):
     """
     Makes a new column containing group ids used by subsequent pandas groupbys
     """
@@ -93,7 +93,7 @@ def make_column_arange(first_slice, target_column, fillna_groupby_col=None, fill
     if isinstance(fillna_groupby_col, str) or isinstance(fillna_groupby_col, list):
         groupby = first_slice.groupby(fillna_groupby_col)
         first_slice = groupby.fillna(method=fill)
-    else:
+    elif fill:
         first_slice.loc[:, 'temp'] = first_slice['temp'].fillna(method=fill).copy()
     return first_slice.loc[:, 'temp']
 

@@ -58,8 +58,9 @@ def read_sensor_data(path_in, columns=None, dates=None, remake_dates=False, sep=
     return data
 
 
-def read_work_table(path_in, columns, sep=';'):
-    return pd.read_csv(path_in, sep=sep,
+def read_work_table(path_in, columns, sep=','):
+    return pd.read_csv(path_in,
+                       sep=sep,
                        usecols=columns['init_work_prepared'],
                        encoding="ISO-8859-1",
                        parse_dates=['StartDateTime', 'StopDateTime'],

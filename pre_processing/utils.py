@@ -69,6 +69,7 @@ class PreProcess:
                         read_writer=type(self._read_writer),
                         fix_duplicates=self.base_data.sd_cleaner.fix_duplicates
                     )
+                    print('STATS FOLDER CREATED')
                 else:
                     print('STATS FOLDER ALREADY EXISTS')
                 self._feature_extractor.stats = self._read_writer.read_agg_stats()

@@ -2,6 +2,37 @@ import numpy as np
 import pandas as pd
 
 
+def sum_num_pace_ins_larger_than_n(data, n, n_rows_back=30):
+    """
+    Groups on JOBNUM, looks back a maximum of n_rows_back and sums the number
+    of pace-ins longer than n
+    """
+    groupby = data.groupby('JOBNUM')
+    return groupby.apply(_sum_num_pace_ins_larger_than_n, n, n_rows_back)\
+                  .reset_index(drop=True)
+
+
+def _sum_num_pace_ins_larger_than_n(data, n, n_rows_back):
+    """
+    Iterates through each pace >= n ID in each JOBNUM and calculates how many
+    pace >= n occured n_rows_back
+    """
+    ids = data.loc[data[f'0102 Pace >= {n} ID'] >= 1, :]
+    for index, row in ids.iterrows():
+        """
+        check whether there are less than n_rows_back before the 
+        0102 pace >= n ID         
+        """
+        if index - n_rows_back >= data.index[0]:
+            sliced = data.loc[index - n_rows_back:index + 1, :]
+        else:
+            sliced = data.loc[data.index[0]:index+1, :]
+
+        data.loc[index, f'0102 Sum Pace >= {n}'] = sliced.aggregate({'0102 Pace >= 25 Count': 'sum'})\
+                                                         .squeeze() - 1
+    return data
+
+
 def calc_t_delta_and_merge(deacs_sd, agg, condition, multi=False):
     """
     Calculates the time between when a string enters a machine then concats

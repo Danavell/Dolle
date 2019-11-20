@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from utils.sensor_data import feature_extraction as fsd
-from utils.utils import make_column_arange
+from utils.utils import make_column_arange_gte
 
 
 def _drop_first_rows(data):
@@ -187,6 +187,6 @@ def _make_new_jam_durations(n, sensor_data, col=2):
     condition = sensor_data[f'010{col} Jam'].isin(jams)
     groups = sensor_data.loc[condition]
     column = f'010{col} Jam >= {n}'
-    sensor_data[column] = make_column_arange(groups, f'Non Duplicate 010{col}')
+    sensor_data[column] = make_column_arange_gte(groups, f'Non Duplicate 010{col}')
     sensor_data = _make_non_duplicate_jams(sensor_data, column)
     return sensor_data

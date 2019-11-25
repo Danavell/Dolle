@@ -72,14 +72,13 @@ class StatsFeatureExtractor0102Agg:
         sensor_data = aggs.pop('sensor_data')
         work_table = aggs.pop('work_table')
 
-        products = []
         for key in aggs.keys():
             if not re.match(r'^all (\d) products$', key):
-                products.append(key)
                 total_duration = self.stats.loc[self.stats['Product'] == key, ['Job Length(s)']]\
                     .astype(float)\
                     .squeeze()
             else:
+                products = [key for key in aggs.keys() if not re.match(r'^all (\d) products$', key)]
                 total_duration = self.stats.loc[self.stats['Product'].isin(products), ['Job Length(s)']]\
                     .astype(float)\
                     .squeeze()

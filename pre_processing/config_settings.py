@@ -18,7 +18,16 @@ settings = {
             'stats': True
         }
     },
-    'Stats 1405: 0102, 1 SW, 2 CF, no overlaps': {
+    'TEMP: 0102, 1 SW, 2 CF, no overlaps': {
+         'machine': ut.Machine1405,
+         'base_data': ut.BaseData,
+         'remove_overlaps': wt.remove_all_overlaps,
+         'ladder_filter': wt.filter_main_SW_and_2_CF_1405_auto_input,
+         'feature_extractor': fe.StatsFeatureExtractor0103Agg,
+         'sd_cleaner': sd.SensorDataCleaner1405,
+         'meta': {}
+     },
+     'Stats 1405: 0102, 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -235,6 +244,7 @@ agg_funcs_0102 = {
 
 base_agg_funcs_0103 = {
     'JOBNUM': 'first',
+    'Date': 'first',
     '0103 ID': 'first',
     'Non Duplicate 0101': 'sum',
     'Non Duplicate 0102': 'sum',

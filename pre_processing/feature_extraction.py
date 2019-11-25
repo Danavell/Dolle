@@ -1,7 +1,6 @@
 import re
 
 import numpy as np
-import pandas as pd
 
 import pre_processing.utils as ut
 import pre_processing.config_settings as cs
@@ -165,30 +164,7 @@ class MLFeatureExtractor0102:
                 data = sensor_data.copy()
 
             agg = aggs[key].copy()
-            agg.loc[:, 'rows until end'] = agg.groupby('0103 ID').cumcount(ascending=False) + 1
-            agg.loc[:, 'rows since start'] = agg.groupby('0103 ID').cumcount() + 1
-
-            no_deacs = agg.loc[agg['Non Duplicate 0101'] == 0, :]
-            deacs_sd = data.loc[
-                (data['Non Duplicate 0101'] == 1) & (data['0102 ID'].isin(agg['0102 ID'])),
-                ['Date', '0102 ID']
-            ]
-            """
-            Separate 0102 IDs with 1 and more than 1 deactivation. Slightly different functions
-            will have to be applied to both. Therefore, it makes sense to separate them as 
-            early as possible
-            """
-            single_deacs = a_0102.calc_t_delta_and_merge(deacs_sd, agg, agg['Non Duplicate 0101'] == 1)
-            multi_deacs = a_0102.calc_t_delta_and_merge(
-                deacs_sd, agg, agg['Non Duplicate 0101'] > 1, multi=True
-            )
-
-            agg = pd.concat([
-                single_deacs,
-                no_deacs,
-                multi_deacs.loc[multi_deacs.groupby('0102 ID').cumcount() + 1 == 1, :]
-            ], axis=0, sort=False)
-            agg = agg.sort_values(['0102 ID', 'Date']).reset_index(drop=True)
+            agg = ut.calc_time_delta_between_deac_and_010n(data, agg, 2)
 
             """
             Creates unique IDs for all aggregates that have an 0102 pace >= n. Also creates a
@@ -217,6 +193,7 @@ class StatsFeatureExtractor0103Agg:
         base.feature_extraction(work_table, sensor_data, machine, meta)
 
         sensor_data = base.data.pop('sensor_data')
+        work_table = base.data.pop('work_table')
         aggs = base.data
         for key in aggs.keys():
             if not re.match(r'^all (\d) products$', key):
@@ -226,8 +203,18 @@ class StatsFeatureExtractor0103Agg:
                 data = sensor_data.copy()
 
             agg = base.data[key].copy()
+            agg = ut.calc_time_delta_between_deac_and_010n(data, agg, 3)
 
-        self.data['work_table'] = base.data['work_table']
+            frames = {
+                'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
+            }
+            percentiles = ut.calc_percentiles(frames)
+            self.data[key] = dict()
+            self.data[key][key] = agg
+            self.data[key][f'{key} percentiles'] = percentiles
+
+        self.data['sensor_data'] = sensor_data
+        self.data['work_table'] = work_table
 
 
 class MLFeatureExtractor0103:
@@ -235,7 +222,7 @@ class MLFeatureExtractor0103:
         self.data = None
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
-        jam = meta.get('jam')
+        jam = meta.get('jam', 20)
         drop_first_rows = a_0103.drop_first_rows if meta.get('drop_first') else False
 
         columns = machine.data_generation_columns

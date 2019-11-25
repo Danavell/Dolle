@@ -75,38 +75,3 @@ def _sum_num_pace_ins_larger_than_n(data, n, n_rows_back):
             .aggregate({f'0102 Pace >= {n} Count': 'sum'})\
             .squeeze() - 1
     return data
-
-
-def calc_t_delta_and_merge(deacs_sd, agg, condition, multi=False):
-    """
-    Calculates the time between when a string enters a machine then concats
-    the time vector for all deacs with the agg data
-    """
-    data = agg.loc[condition, :]
-    time_delta_aggs = calc_time_since_string_in_and_deactivation(
-        deacs_sd, data
-    )
-    """
-    If the agg data contains rows with only 1 deac per 0102 ID then it doesn't
-    matter which dataframe is on the 'left'. This is not true when the 0102 ID contains
-    multiple deactivations. In that case the time deltas, which contain all the 
-    deactivations in an 0102 ID, must be on the left
-    """
-    left = time_delta_aggs if multi else data
-    right = data if multi else time_delta_aggs
-    return pd.merge(left=left, right=right, left_on='0102 ID', right_on='0102 ID')
-
-
-def calc_time_since_string_in_and_deactivation(sd_deacs, agg_deacs):
-    """
-    Returns a dataframe containing 0102 ID, the time of each string in and deactivation
-    as well as the time delta between them
-    """
-    agg_deacs = agg_deacs.loc[:, ['Date', '0102 ID', 'Non Duplicate 0101']].copy()
-    merged = pd.merge(
-        left=agg_deacs, right=sd_deacs, how='left', left_on='0102 ID', right_on='0102 ID'
-    )
-    merged.loc[:, 'Time Delta'] = (merged.loc[:, 'Date_y'] - merged.loc[:, 'Date_x']) \
-        .dt.total_seconds() \
-        .astype(int)
-    return merged.loc[:, ['0102 ID', 'Date_y', 'Time Delta']]

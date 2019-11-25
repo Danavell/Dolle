@@ -124,6 +124,65 @@ def _make_labels(agg_data):
     return agg_data
 
 
+def calc_time_delta_between_deac_and_010n(data, agg, x):
+    no_deacs = agg.loc[agg['Non Duplicate 0101'] == 0, :]
+    deacs_sd = data.loc[
+        (data['Non Duplicate 0101'] == 1) & (data[f'010{x} ID'].isin(agg[f'010{x} ID'])),
+        ['Date', f'010{x} ID']
+    ]
+    """
+    Separate 010X IDs with 1 and more than 1 deactivation. Slightly different functions
+    will have to be applied to both. Therefore, it makes sense to separate them as 
+    early as possible
+    """
+    single_deacs = _calc_t_delta_and_merge(deacs_sd, agg, agg['Non Duplicate 0101'] == 1, x=x)
+    multi_deacs = _calc_t_delta_and_merge(
+        deacs_sd, agg, agg['Non Duplicate 0101'] > 1, multi=True, x=x
+    )
+
+    agg = pd.concat([
+        single_deacs,
+        no_deacs,
+        multi_deacs.loc[multi_deacs.groupby(f'010{x} ID').cumcount() + 1 == 1, :]
+    ], axis=0, sort=False)
+    return agg.sort_values([f'010{x} ID', 'Date']).reset_index(drop=True)
+
+
+def _calc_t_delta_and_merge(deacs_sd, agg, condition, multi=False, x=2):
+    """
+    Calculates the time between when a string enters a machine then concats
+    the time vector for all deacs with the agg data
+    """
+    data = agg.loc[condition, :]
+    time_delta_aggs = _calc_time_since_string_in_and_deactivation(
+        deacs_sd, data, x
+    )
+    """
+    If the agg data contains rows with only 1 deac per 010n ID then it doesn't
+    matter which dataframe is on the 'left'. This is not true when the 010X ID contains
+    multiple deactivations. In that case the time deltas, which contain all the 
+    deactivations in an 010X ID, must be on the left
+    """
+    left = time_delta_aggs if multi else data
+    right = data if multi else time_delta_aggs
+    return pd.merge(left=left, right=right, left_on=f'010{x} ID', right_on=f'010{x} ID')
+
+
+def _calc_time_since_string_in_and_deactivation(sd_deacs, agg_deacs, x):
+    """
+    Returns a dataframe containing 0102 ID, the time of each string in and deactivation
+    as well as the time delta between them
+    """
+    agg_deacs = agg_deacs.loc[:, ['Date', f'010{x} ID', 'Non Duplicate 0101']].copy()
+    merged = pd.merge(
+        left=agg_deacs, right=sd_deacs, how='left', left_on=f'010{x} ID', right_on=f'010{x} ID'
+    )
+    merged.loc[:, 'Time Delta'] = (merged.loc[:, 'Date_y'] - merged.loc[:, 'Date_x']) \
+        .dt.total_seconds() \
+        .astype(int)
+    return merged.loc[:, [f'010{x} ID', 'Date_y', 'Time Delta']]
+
+
 def _calc_percentile(data):
     return pd.DataFrame(
         np.percentile(data, [i for i in range(1, 100)]),

@@ -18,31 +18,6 @@ settings = {
             'stats': True
         }
     },
-    'Stats 1405: 0102, 1 SW, no overlaps': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_1405_auto_input,
-        'feature_extractor': fe.StatsFeatureExtractor0102Agg,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'stats_folder': stats_1405,
-            'n': pace_0102_gte_n,
-        }
-    },
-    'Stats 1405: 0102, 1 SW, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_1405_auto_input,
-        'feature_extractor': fe.StatsFeatureExtractor0102Agg,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'drop_first': True,
-            'stats_folder': stats_1405,
-            'n': pace_0102_gte_n,
-        }
-    },
     'Stats 1405: 0102, 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
@@ -51,19 +26,6 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': stats_1405,
-            'n': pace_0102_gte_n,
-        }
-    },
-    'Stats 1405: 0102, 1 SW, 2 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_and_2_CF_1405_auto_input,
-        'feature_extractor': fe.StatsFeatureExtractor0102Agg,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'drop_first': True,
             'stats_folder': stats_1405,
             'n': pace_0102_gte_n,
         }
@@ -80,19 +42,6 @@ settings = {
             'n': pace_0102_gte_n,
         }
     },
-    'Stats 1405: 0102, 1 SW, 3 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_and_3_CF_1405_auto_input,
-        'feature_extractor': fe.StatsFeatureExtractor0102Agg,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'drop_first': True,
-            'stats_folder': stats_1405,
-            'n': pace_0102_gte_n,
-        }
-    },
     'Stats 1405: 0102, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
@@ -101,19 +50,6 @@ settings = {
         'feature_extractor': fe.StatsFeatureExtractor0102Agg,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
-            'stats_folder': stats_1405,
-            'n': pace_0102_gte_n,
-        }
-    },
-    'Stats 1405: 0102, 3 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_3_main_CF_ladders_1405_auto_input,
-        'feature_extractor': fe.StatsFeatureExtractor0102Agg,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'drop_first': True,
             'stats_folder': stats_1405,
             'n': pace_0102_gte_n,
         }
@@ -129,18 +65,6 @@ settings = {
             'jams': 20,
         }
     },
-    'MLAgg0103 1405: 1 SW, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_1405_auto_input,
-        'feature_extractor': fe.MLFeatureExtractor0103,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'jams': 20,
-            'drop_first': True
-        }
-    },
     'MLAgg0103 1405: 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
@@ -150,18 +74,6 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {
             'jams': 20,
-        }
-    },
-    'MLAgg0103 1405: 1 SW, 2 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_and_2_CF_1405_auto_input,
-        'feature_extractor': fe.MLFeatureExtractor0103,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'jams': 20,
-            'drop_first': True
         }
     },
     'MLAgg0103 1405: 1 SW, 3 CF, no overlaps': {
@@ -175,18 +87,6 @@ settings = {
             'jams': 20,
         }
     },
-    'MLAgg0103 1405: 1 SW, 3 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_and_3_CF_1405_auto_input,
-        'feature_extractor': fe.MLFeatureExtractor0103,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'jams': 20,
-            'drop_first': True
-        }
-    },
     'MLAgg0103 1405: 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
@@ -198,32 +98,11 @@ settings = {
             'jams': 20
         }
     },
-    'MLAgg0103 1405: 3 CF, no overlaps, drop first rows': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_3_main_CF_ladders_1405_auto_input,
-        'feature_extractor': fe.MLFeatureExtractor0103,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {
-            'jams': 20,
-            'drop_first': True
-        }
-    },
     'BaseData 1405: 1 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
         'ladder_filter': wt.filter_main_SW_1405_auto_input,
-        'feature_extractor': fe.BaseData1405FeatureExtractor,
-        'sd_cleaner': sd.SensorDataCleaner1405,
-        'meta': {}
-    },
-    'BaseData 1405: 1 SW, no overlaps': {
-        'machine': ut.Machine1405,
-        'base_data': ut.BaseData,
-        'remove_overlaps': wt.remove_all_overlaps,
-        'ladder_filter': wt.filter_main_SW_ladder_1405_auto_input,
         'feature_extractor': fe.BaseData1405FeatureExtractor,
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}

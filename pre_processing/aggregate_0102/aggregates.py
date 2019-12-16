@@ -12,24 +12,6 @@ def drop_first_rows(data):
     return data.drop(indices, axis=0)
 
 
-def give_unique_0103_ids_end_jobnum(sensor_data):
-    """
-    At the end of jobnums, no ladders are produced and 0103 IDs are nan. It is
-    important that they have unique JOBNUMS since aggregate stats treat all
-    of the nan 0103 IDs in all of the JOBNUMs as one group. Though this
-    function gives each block of nans per JOBNUM a unique ID, they are
-    distinguished from real 0103 IDs by the fact that they go from -1, -2 ...
-    """
-    condition = (sensor_data['0103 ID'] == -1) & (sensor_data['prev_0103 ID'] >= 1)
-    sensor_data['0103 ID'] = sensor_data['0103 ID'].replace(-1, np.nan)
-    end_of_jobnum = sensor_data.loc[condition].copy()
-    end_of_jobnum.loc[:, 'temp'] = np.arange(1, len(end_of_jobnum.index) + 1) * -1
-    sensor_data.loc[end_of_jobnum.index, '0103 ID'] = end_of_jobnum['temp']
-    sensor_data['0103 ID'] = sensor_data.groupby('JOBNUM')['0103 ID']\
-        .fillna(method='ffill')
-    return sensor_data
-
-
 def calc_time_delta_last_ladder_out(sensor_data):
     """
     For each row of the sensor data, the time difference is calculated between

@@ -197,3 +197,41 @@ def calc_percentiles(frames):
     output = pd.concat([_calc_percentile(frames[key]) for key in frames.keys()], axis=1)
     output.columns = [key for key in frames.keys()]
     return output
+
+
+def give_unique_010n_ids_end_jobnum(sensor_data, n=3):
+    """
+    At the end of jobnums, no ladders are produced and 0103 IDs are nan.
+    Conversely, at the end of jobnums, no strings enter the machine and
+    0102 IDs are also nan.
+
+    It is important that they have unique JOBNUMS since aggregate stats
+    treat all of the nan 0103 IDs in all of the JOBNUMs as one group.
+    Though this function gives each block of nans per JOBNUM a unique ID,
+    they are distinguished from real 0103 IDs by the fact that they go from
+    -1, -2 ...
+    """
+    condition = (sensor_data[f'010{n} ID'] == -1) & (sensor_data[f'prev_010{n} ID'] >= 1)
+    sensor_data[f'010{n} ID'] = sensor_data[f'010{n} ID'].replace(-1, np.nan)
+    end_of_jobnum = sensor_data.loc[condition].copy()
+    end_of_jobnum.loc[:, 'temp'] = np.arange(1, len(end_of_jobnum.index) + 1) * -1
+    sensor_data.loc[end_of_jobnum.index, f'010{n} ID'] = end_of_jobnum['temp']
+    sensor_data[f'010{n} ID'] = sensor_data.groupby('JOBNUM')[f'010{n} ID']\
+        .fillna(method='ffill')
+    return sensor_data
+
+
+def pie_chart(data, labels, title):
+    import matplotlib.pyplot as plt
+
+    plt.pie(data, startangle=90)
+    plt.title(title)
+    plt.axis('equal')
+    plt.legend(
+        loc='right',
+        labels=[
+            '%s, %1.1f %%' %
+            (int(l), d * 100) for l, d in zip(labels, data)
+        ]
+    )
+    plt.show()

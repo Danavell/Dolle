@@ -98,6 +98,19 @@ def make_column_arange_gte(first_slice, target_column, fillna_groupby_col=None, 
     return first_slice.loc[:, 'temp']
 
 
+def make_column_cumcount_ne_zero(original, target_column, groupby, fillna_groupby_col, fill='ffill', n=1):
+    condition = original.loc[:, target_column] != 0
+    second_slice = original.loc[condition]
+    second_slice.loc[:, 'temp'] = second_slice.groupby(groupby).cumcount() + n
+    original.loc[:, 'temp'] = second_slice.loc[:, 'temp']
+    if isinstance(fillna_groupby_col, str) or isinstance(fillna_groupby_col, list):
+        groupby = original.groupby(fillna_groupby_col)
+        original = groupby.fillna(method=fill)
+    elif fill:
+        original.loc[:, 'temp'] = original.loc[:, 'temp'].fillna(method=fill).copy()
+    return original['temp']
+
+
 def get_csv_directory():
     path = os.getcwd()
     while True:

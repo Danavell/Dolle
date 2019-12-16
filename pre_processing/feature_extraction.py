@@ -1,6 +1,7 @@
 import re
 
 import numpy as np
+import pandas as pd
 
 import pre_processing.utils as ut
 import pre_processing.config_settings as cs
@@ -15,12 +16,15 @@ from utils.STATS import STATS as st
 from utils.utils import make_column_arange_gte
 
 
+regex = r'^all (\d) products$'
+
+
 class BaseData1405FeatureExtractor:
     def __init__(self, _):
         self.data = dict()
         self._category = None
 
-    def feature_extraction(self, work_table, sensor_data, _, __):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
 
@@ -35,13 +39,15 @@ class StatsFeatureExtractor:
     def __init__(self):
         self.data = dict()
 
-    def feature_extraction(self, work_table, sensor_data, machine, _):
+    def feature_extraction(self, work_table, sensor_data, machine, meta):
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
         sensor_data = fsd.calculate_pace(sensor_data, columns)
 
         columns = machine.generate_statistics
-        stats = st.generate_statistics(sensor_data.copy(), work_table, columns)
+        stats = st.generate_statistics(
+            sensor_data.copy(), work_table, columns
+        )
         agg_dict = {
             'Product': 'first',
             'Job Length(s)': 'sum',
@@ -70,39 +76,77 @@ class StatsFeatureExtractor0102Agg:
         aggs = base.data
         sensor_data = aggs.pop('sensor_data')
         work_table = aggs.pop('work_table')
+        output = None
 
         for key in aggs.keys():
-            if not re.match(r'^all (\d) products$', key):
-                total_duration = self.stats.loc[self.stats['Product'] == key, ['Job Length(s)']]\
+            if not re.match(regex, key):
+                total_duration = self.stats\
+                    .loc[self.stats['Product'] == key, ['Job Length(s)']]\
                     .astype(float)\
                     .squeeze()
+                p_sensor_data = sensor_data[sensor_data['NAME'] == key].copy()
             else:
-                products = [key for key in aggs.keys() if not re.match(r'^all (\d) products$', key)]
-                total_duration = self.stats.loc[self.stats['Product'].isin(products), ['Job Length(s)']]\
+                products = [
+                    key for key in aggs.keys() if not re.match(regex, key)
+                ]
+                total_duration = self.stats\
+                    .loc[self.stats['Product'].isin(products), ['Job Length(s)']]\
                     .astype(float)\
                     .squeeze()
                 total_duration = np.sum(total_duration)
+                p_sensor_data = sensor_data.copy()
 
             agg = aggs[key].copy()
+            agg.loc[:, 'strings since last ladder'] = agg.groupby('0103 ID')\
+                .cumcount() + 1
+            agg.loc[:, 'strings until next ladder'] = agg.groupby('0103 ID')\
+                .cumcount(ascending=False) + 1
+
+            deacs, p_sensor_data = ast_0102\
+                .returns_deacs_strings_before_or_after_ladder_out(
+                agg, p_sensor_data
+            )
+
             frames = {
-                'ND: 0102 Pace': agg.loc[agg.loc[:, 'Label'] == 0, '0102 Pace'],
-                'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
+                'ND: 0102 Pace': agg.loc[
+                    agg.loc[:, 'Label'] == 0, '0102 Pace'
+                ],
+                'D: time delta': agg.loc[
+                    agg.loc[:, 'Label'] == 1, 'Time Delta'
+                ],
                 'ND: sum hi pace 30 r': agg.loc[
-                    (agg['Label'] == 0) & (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
+                    (agg['Label'] == 0) &
+                    (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
                 'D: sum hi pace 30 r': agg.loc[
-                    (agg['Label'] == 1) & (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
-                'ND: Time since 0103': agg.loc[agg['Label'] == 0, 'Time Since Last 0103'],
-                'D: Time since 0103': agg.loc[agg['Label'] == 1, 'Time Since Last 0103'],
-                f'ND: until end >= {n}': agg.loc[agg['0102 Pace'] >= n, 'rows until end'],
-                'D: until end': agg.loc[agg.loc[:, 'Label'] == 1, 'rows until end'],
-                f'ND: since start >= {n}': agg.loc[agg['0102 Pace'] >= n, 'rows since start'],
-                'D: since start': agg.loc[agg.loc[:, 'Label'] == 1, 'rows since start'],
+                    (agg['Label'] == 1) &
+                    (agg['0102 Pace'] >= n), f'0102 Sum Pace >= {n}'],
+                'ND: Time since 0103 hi': agg.loc[
+                    (agg['Label'] == 0) &
+                    (agg['0102 Pace'] >= n), 'Time Since Last 0103'
+                ],
+                'D: Time since 0103': agg.loc[
+                    agg['Label'] == 1, 'Time Since Last 0103'],
+                f'ND: until end >= {n}': agg.loc[
+                    (agg['0102 Pace'] >= n) &
+                    (agg['Label'] == 0) &
+                    (agg['0103 non_unique ID'] > 1), 'strings until next ladder'
+                ],
+                'D: until end': deacs['strings until next ladder'],
+                f'ND: since start >= {n}': agg.loc[
+                    (agg['0102 Pace'] >= n) &
+                    (agg['Label'] == 0) &
+                    (agg['0103 non_unique ID'] > 1), 'strings since last ladder'
+                ],
+                'D: since start': deacs['strings since last ladder'],
             }
             percentiles = ut.calc_percentiles(frames)
 
             self.data[key] = dict()
             self.data[key][key] = agg
             self.data[key][f'{key} percentiles'] = percentiles
+
+            # frames = [output, p_sensor_data]
+            # output = pd.concat(frames) if output else p_sensor_data
 
             conf = ast_0102.confusion_matrix(agg, train=False)
             total_alarms = conf[0, 1] + conf[1, 1]
@@ -128,7 +172,7 @@ class MLFeatureExtractor0102:
         self.data = dict()
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
-        drop_first_rows = a_0102.drop_first_rows if meta.get('drop_first') else False
+        drop = a_0102.drop_first_rows if meta.get('drop_first') else False
         n = meta.get('n', 25)
 
         columns = machine.data_generation_columns
@@ -140,24 +184,30 @@ class MLFeatureExtractor0102:
         sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
+        for i in range(2, 4):
+            sensor_data[f'010{i} ID'] = sensor_data[f'010{i} ID'].fillna(-1)
+            sensor_data[f'prev_010{i} ID'] = sensor_data\
+                .groupby('JOBNUM')[f'010{i} ID']\
+                .shift(1)
 
-        sensor_data['0103 ID'] = sensor_data['0103 ID'].fillna(-1)
-        sensor_data['prev_0103 ID'] = sensor_data.groupby('JOBNUM')['0103 ID'].shift(1)
-        sensor_data = a_0102.give_unique_0103_ids_end_jobnum(sensor_data)
+        sensor_data = ut.give_unique_010n_ids_end_jobnum(sensor_data, 2)
+        sensor_data = ut.give_unique_010n_ids_end_jobnum(sensor_data)
         sensor_data = a_0102.calc_time_delta_last_ladder_out(sensor_data)
 
         sensor_data['Indgang 0101 time'] = fsd.calc_error_time(
             sensor_data, 'Indgang 0101', groupby_cols=['JOBNUM', '0102 ID']
         )
 
-        sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(sensor_data, 3)
+        sensor_data.loc[:, '0103 non_unique ID'] = fsd.make_ID(
+            sensor_data, 3
+        )
         sensor_data = sd.get_dummies_concat(sensor_data)
-
         aggs = ut.make_aggregates(
-            sensor_data, cs.product_col_reg_ex, '0102 ID', cs.agg_funcs_0102, drop_first_rows
+            sensor_data, cs.product_col_reg_ex, '0102 ID',
+            cs.agg_funcs_0102, drop
         )
         for key in aggs.keys():
-            if not re.match(r'^all (\d) products$', key):
+            if not re.match(regex, key):
                 condition = sensor_data.loc[:, key] == 1
                 data = sensor_data.loc[condition, :].copy()
             else:
@@ -167,13 +217,18 @@ class MLFeatureExtractor0102:
             agg = ut.calc_time_delta_between_deac_and_010n(data, agg, 2)
 
             """
-            Creates unique IDs for all aggregates that have an 0102 pace >= n. Also creates a
-            column with the value of 1 at the same row. This intended for summing the number
-            of rows n_num_rows before each unique 0102 pace >= n ID
+            Creates unique IDs for all aggregates that have an 0102 pace 
+            >= n. Also creates a column with the value of 1 at the same row. 
+            This intended for summing the number of rows n_num_rows before 
+            each unique 0102 pace >= n ID
             """
             indices = agg[agg['0102 Pace'] >= n].index
-            agg.loc[indices, f'0102 Pace >= {n} ID'] = np.arange(1, len(indices) + 1)
-            agg[f'0102 Pace >= {n} ID'] = agg[f'0102 Pace >= {n} ID'].fillna(0).astype(int)
+            agg.loc[indices, f'0102 Pace >= {n} ID'] = np.arange(
+                1, len(indices) + 1
+            )
+            agg[f'0102 Pace >= {n} ID'] = agg[f'0102 Pace >= {n} ID']\
+                .fillna(0)\
+                .astype(int)
             agg[f'0102 Pace >= {n} Count'] = 0
             agg.loc[indices, f'0102 Pace >= {n} Count'] = 1
             agg = a_0102.sum_num_pace_ins_larger_than_n(agg, n)
@@ -196,7 +251,7 @@ class StatsFeatureExtractor0103Agg:
         work_table = base.data.pop('work_table')
         aggs = base.data
         for key in aggs.keys():
-            if not re.match(r'^all (\d) products$', key):
+            if not re.match(regex, key):
                 condition = sensor_data.loc[:, key] == 1
                 data = sensor_data.loc[condition, :].copy()
             else:
@@ -206,7 +261,12 @@ class StatsFeatureExtractor0103Agg:
             agg = ut.calc_time_delta_between_deac_and_010n(data, agg, 3)
 
             frames = {
-                'D: time delta': agg.loc[agg.loc[:, 'Label'] == 1, 'Time Delta'],
+                'ND: 0103 Pace': agg.loc[
+                    agg.loc[:, 'Label'] == 0, '0103 Pace'
+                ],
+                'D: time delta': agg.loc[
+                    agg.loc[:, 'Label'] == 1, 'Time Delta'
+                ],
             }
             percentiles = ut.calc_percentiles(frames)
             self.data[key] = dict()
@@ -223,7 +283,7 @@ class MLFeatureExtractor0103:
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
         jam = meta.get('jam', 20)
-        drop_first_rows = a_0103.drop_first_rows if meta.get('drop_first') else False
+        drop = a_0103.drop_first_rows if meta.get('drop_first') else False
 
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
@@ -236,13 +296,15 @@ class MLFeatureExtractor0103:
         funcs = cs.base_agg_funcs_0103
         if jam:
             num = 20
-            sensor_data = a_0103.make_n_length_jam_durations(sensor_data, num)
+            sensor_data = a_0103.make_n_length_jam_durations(
+                sensor_data, num
+            )
             for i in range(num, 1, -1):
                 funcs[f'Sum 0102 Jam >= {i}'] = 'sum'
 
         sensor_data = sd.get_dummies_concat(sensor_data)
         self.data = ut.make_aggregates(
-            sensor_data, cs.product_col_reg_ex, '0103 ID', funcs, drop_first_rows
+            sensor_data, cs.product_col_reg_ex, '0103 ID', funcs, drop
         )
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table

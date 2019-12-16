@@ -44,7 +44,7 @@ class PrepareWorkTable:
         next_columns = ['f_StopDateTime', 'f_StartDateTime']
         self._cleaner.work_table.drop(next_columns, axis=1, inplace=True)
         self._cleaner.work_table[next_columns] = self._cleaner.work_table[current_columns].shift(-1)
-        self._cleaner.work_table.loc[:, 'JOBNUM'] = np.arange(len(self._cleaner.work_table.index))
+        self._cleaner.work_table['JOBNUM'] = np.arange(1, len(self._cleaner.work_table.index) + 1)
         return self._cleaner.work_table
 
     def remove_breaks(self, sensor_data, breaks):
@@ -126,20 +126,22 @@ def add_columns(work_table):
     work_table.sort_values('StartDateTime', inplace=True)
     work_table = work_table.loc[work_table['WRKCTRID'] == 1405, :]
     work_table = work_table.reset_index(drop=True)
-    next_columns = ['f_StartDateTime', 'f_StopDateTime', 'f_QTYGOOD', 'f_JOBREF', 'f_NAME']
-    original_columns = ['StartDateTime', 'StopDateTime', 'QTYGOOD', 'JOBREF', 'NAME']
+    original_columns = ['StartDateTime', 'StopDateTime', 'JOBREF', 'NAME']
+    if 'QTYGOOD' in work_table.columns:
+        original_columns += ['QTYGOOD']
+    next_columns = [f'f_{column}' for column in original_columns]
     work_table[next_columns] = work_table[original_columns].shift(-1)
     return work_table
 
 
 def remove_complete_duplicates(work_table):
-    work_table = work_table.loc[~work_table[['JOBREF',
-                                             'QTYGOOD',
-                                             'StartDateTime',
-                                             'StopDateTime',
-                                             'Seconds',
-                                             'NAME']].duplicated(keep='first')]
+    columns = ['JOBREF', 'StartDateTime', 'StopDateTime', 'NAME']
+    if 'seconds' in work_table.columns:
+        columns += ['Seconds']
+    if 'QTYGOOD' in work_table.columns:
+        columns += ['QTYGOOD']
 
+    work_table = work_table.loc[~work_table[columns].duplicated(keep='first')]
     work_table = work_table.loc[work_table['WRKCTRID'] == 1405, :]
     return work_table
 
@@ -190,71 +192,89 @@ def remove_complete_overlaps(work_table):
 
 
 def remove_top_heavy_overlaps(work_table, stats=True):
-    # REMOVE TOP HEAVY OVERLAPS WHERE QTYGOOD == 0 AND f_QTYGOOD >= 0
-    top_heavy_overlaps = work_table[
-        (work_table['StartDateTime'] == work_table['f_StartDateTime'])
-        & (work_table['StopDateTime'] < work_table['f_StopDateTime'])
-        & (work_table['QTYGOOD'] == 0)
-        & (work_table['f_QTYGOOD'] >= 0)
-    ]
+    if 'QTYGOOD' in work_table.columns:
+        # REMOVE TOP HEAVY OVERLAPS WHERE QTYGOOD == 0 AND f_QTYGOOD >= 0
+        top_heavy_overlaps = work_table[
+            (work_table['StartDateTime'] == work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] < work_table['f_StopDateTime'])
+            & (work_table['QTYGOOD'] == 0)
+            & (work_table['f_QTYGOOD'] >= 0)
+        ]
 
-    condition = work_table.index.isin(top_heavy_overlaps.index)
-    work_table = work_table.loc[~condition, :]
+        condition = work_table.index.isin(top_heavy_overlaps.index)
+        work_table = work_table.loc[~condition, :]
 
-    # CHECKS FOR TOP HEAVY OVERLAPS WHERE QTYGOOD >= 0 AND f_QTYGOOD >= 0.
-    # IF STATS=TRUE and ANY ARE FOUND, THE JOBREFS CONTAINING THEM ARE DELETED
-    top_heavy_overlaps_non_zero = work_table[
-        (work_table['StartDateTime'] == work_table['f_StartDateTime'])
-        & (work_table['StopDateTime'] <= work_table['f_StopDateTime'])
-        & (work_table['QTYGOOD'] != 0)
-        & (work_table['f_QTYGOOD'] != 0)
-    ]
+        # CHECKS FOR TOP HEAVY OVERLAPS WHERE QTYGOOD >= 0 AND f_QTYGOOD >= 0.
+        # IF STATS=TRUE and ANY ARE FOUND, THE JOBREFS CONTAINING THEM ARE DELETED
+        top_heavy_overlaps_non_zero = work_table[
+            (work_table['StartDateTime'] == work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] <= work_table['f_StopDateTime'])
+            & (work_table['QTYGOOD'] != 0)
+            & (work_table['f_QTYGOOD'] != 0)
+        ]
+        if stats:
+            if len(top_heavy_overlaps_non_zero.index) != 0:
+                work_table = _remove_jobrefs(work_table, top_heavy_overlaps_non_zero)
 
-    if stats:
-        if len(top_heavy_overlaps_non_zero.index) != 0:
-            work_table = _remove_jobrefs(work_table, top_heavy_overlaps_non_zero)
+        else:
+            indices = top_heavy_overlaps_non_zero.index
+            work_table = work_table[~work_table.index.isin(indices)]
+
     else:
-        indices = top_heavy_overlaps_non_zero.index
+        top_heavy_overlaps = work_table[
+            (work_table['StartDateTime'] == work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] < work_table['f_StopDateTime'])
+        ]
+        indices = top_heavy_overlaps.index
         work_table = work_table[~work_table.index.isin(indices)]
+
     return work_table
 
 
 def remove_bottom_heavy_overlaps(work_table, stats=True):
-    bottom_heavy_overlaps = work_table[
-        (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
-        & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
-        & (work_table['QTYGOOD'] != 0)
-        & (work_table['f_QTYGOOD'] == 0)
-    ]
-    indices_to_delete = bottom_heavy_overlaps.index + 1
-    work_table = work_table[~work_table.index.isin(indices_to_delete)]
+    if 'QTYGOOD' in work_table.columns:
+        bottom_heavy_overlaps = work_table[
+            (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
+            & (work_table['QTYGOOD'] != 0)
+            & (work_table['f_QTYGOOD'] == 0)
+        ]
+        indices_to_delete = bottom_heavy_overlaps.index + 1
+        work_table = work_table[~work_table.index.isin(indices_to_delete)]
 
-    bottom_heavy_overlaps = work_table[
-        (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
-        & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
-        & (work_table['QTYGOOD'] == 0)
-        & (work_table['f_QTYGOOD'] >= 0)
-    ]
-    work_table = _remove_n_plus_1_index_and_set_column(
-        work_table,
-        bottom_heavy_overlaps,
-        {'payload': {'column': 'QTYGOOD', 'f_column': 'f_QTYGOOD'}, }
-    )
+        bottom_heavy_overlaps = work_table[
+            (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
+            & (work_table['QTYGOOD'] == 0)
+            & (work_table['f_QTYGOOD'] >= 0)
+        ]
+        work_table = _remove_n_plus_1_index_and_set_column(
+            work_table,
+            bottom_heavy_overlaps,
+            {'payload': {'column': 'QTYGOOD', 'f_column': 'f_QTYGOOD'}, }
+        )
 
-    # CHECKS FOR BOTTOM HEAVY OVERLAPS WHERE QTYGOOD != 0 AND f_QTYGOOD != 0.
-    # IF ANY ARE FOUND, THE JOBREFS CONTAINING THEM ARE DELETED
-    bottom_heavy_overlaps_both_non_zero = work_table[
-        (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
-        & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
-        & (work_table['QTYGOOD'] != 0)
-        & (work_table['f_QTYGOOD'] != 0)
-    ]
+        # CHECKS FOR BOTTOM HEAVY OVERLAPS WHERE QTYGOOD != 0 AND f_QTYGOOD != 0.
+        # IF ANY ARE FOUND, THE JOBREFS CONTAINING THEM ARE DELETED
+        bottom_heavy_overlaps_both_non_zero = work_table[
+            (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
+            & (work_table['QTYGOOD'] != 0)
+            & (work_table['f_QTYGOOD'] != 0)
+        ]
 
-    if stats:
-        if len(bottom_heavy_overlaps_both_non_zero.index) != 0:
-            work_table = _remove_jobrefs(work_table, bottom_heavy_overlaps_both_non_zero)
+        if stats:
+            if len(bottom_heavy_overlaps_both_non_zero.index) != 0:
+                work_table = _remove_jobrefs(work_table, bottom_heavy_overlaps_both_non_zero)
+        else:
+            indices_to_delete = bottom_heavy_overlaps_both_non_zero.index + 1
+            work_table = work_table[~work_table.index.isin(indices_to_delete)]
     else:
-        indices_to_delete = bottom_heavy_overlaps_both_non_zero.index + 1
+        bottom_heavy_overlaps = work_table[
+            (work_table['StartDateTime'] <= work_table['f_StartDateTime'])
+            & (work_table['StopDateTime'] >= work_table['f_StopDateTime'])
+        ]
+        indices_to_delete = bottom_heavy_overlaps.index + 1
         work_table = work_table[~work_table.index.isin(indices_to_delete)]
 
     return work_table
@@ -282,39 +302,47 @@ def remove_partial_overlaps(work_table, stats=True):
     both = {'payload_1': payload_1, 'payload_2': payload_2, }
     only_2 = {'payload_2': payload_2, }
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
-                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
-                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
-                (work_table['QTYGOOD'] == 0) & \
-                (work_table['f_QTYGOOD'] != 0)
-    partial_overlaps = work_table.loc[condition]
-    work_table = _apply_condition_partial(work_table, partial_overlaps, both)
+    if 'QTYGOOD' in work_table.columns:
+        condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                    (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                    (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                    (work_table['QTYGOOD'] == 0) & \
+                    (work_table['f_QTYGOOD'] != 0)
+        partial_overlaps = work_table.loc[condition]
+        work_table = _apply_condition_partial(work_table, partial_overlaps, both)
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
-                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
-                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
-                (work_table['QTYGOOD'] != 0) & \
-                (work_table['f_QTYGOOD'] == 0)
-    partial_overlaps = work_table.loc[condition]
-    work_table = _apply_condition_partial(work_table, partial_overlaps, both)
+        condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                    (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                    (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                    (work_table['QTYGOOD'] != 0) & \
+                    (work_table['f_QTYGOOD'] == 0)
+        partial_overlaps = work_table.loc[condition]
+        work_table = _apply_condition_partial(work_table, partial_overlaps, both)
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
-                (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
-                (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
-                (work_table['QTYGOOD'] == 0) & \
-                (work_table['f_QTYGOOD'] == 0)
-    partial_overlaps = work_table.loc[condition]
-    work_table = _apply_condition_partial(work_table, partial_overlaps, only_2)
+        condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                    (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                    (work_table['f_StartDateTime'] > work_table['StartDateTime']) & \
+                    (work_table['QTYGOOD'] == 0) & \
+                    (work_table['f_QTYGOOD'] == 0)
+        partial_overlaps = work_table.loc[condition]
+        work_table = _apply_condition_partial(work_table, partial_overlaps, only_2)
 
-    condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) \
-                & (work_table['StopDateTime'] > work_table['f_StartDateTime']) \
-                & (work_table['f_StartDateTime'] > work_table['StartDateTime']) \
-                & (work_table['QTYGOOD'] != 0) \
-                & (work_table['f_QTYGOOD'] != 0)
-    partial_overlaps = work_table.loc[condition]
-    if stats:
-        work_table = _remove_jobrefs(work_table, partial_overlaps)
+        condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) \
+                    & (work_table['StopDateTime'] > work_table['f_StartDateTime']) \
+                    & (work_table['f_StartDateTime'] > work_table['StartDateTime']) \
+                    & (work_table['QTYGOOD'] != 0) \
+                    & (work_table['f_QTYGOOD'] != 0)
+        partial_overlaps = work_table.loc[condition]
+        if stats:
+            work_table = _remove_jobrefs(work_table, partial_overlaps)
+        else:
+            work_table = _apply_condition_partial(work_table, partial_overlaps, only_2)
+
     else:
+        condition = (work_table['f_StopDateTime'] > work_table['StopDateTime']) & \
+                    (work_table['StopDateTime'] > work_table['f_StartDateTime']) & \
+                    (work_table['f_StartDateTime'] > work_table['StartDateTime'])
+        partial_overlaps = work_table.loc[condition]
         work_table = _apply_condition_partial(work_table, partial_overlaps, only_2)
     return work_table
 

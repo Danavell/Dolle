@@ -153,19 +153,16 @@ def fix_0103(sensor_data, keep=True):
     accidently being activated twice
     """
     sensor_data = single_non_duplicate(3, sensor_data)
-    sensor_data = make_column_2_levels(sensor_data, 'Indgang 0103', 'Non Duplicate 0103', '0103 CC Group')
+    sensor_data = make_column_2_levels(sensor_data, 'Indgang 0103', 'Non Duplicate 0103', '0103 Non-Unique Group')
 
-    sensor_data = create_unique_id(sensor_data, '0103 Even CC Group', even=True)
+    sensor_data = create_unique_id(sensor_data, '0103 Odd Group', even=False)
+    sensor_data = create_unique_id(sensor_data, '0103 Even Group', even=True)
 
     if keep:
-        sensor_data = create_unique_id(sensor_data, '0103 Odd CC Group', even=False)
         sensor_data.loc[:, 'Original 0103'] = sensor_data.loc[:, 'Indgang 0103']
 
-    condition = sensor_data.loc[:, '0103 Group'] != 0
+    condition = sensor_data.loc[:, '0103 Odd Group'] != 0
     indices = sensor_data.loc[condition].index
-
-    condition = sensor_data.index.isin(indices)
-    indices = sensor_data.loc[~condition].index
 
     sensor_data.loc[indices, 'Indgang 0103'] = 0
     sensor_data.drop('Non Duplicate 0103', axis=1, inplace=True)
@@ -289,7 +286,7 @@ def create_unique_id(data, column_name, even):
     the odd or even column
     """
     return convert_non_unique_identifier_into_unique(
-        data, column_name, '0103 CC Group', 'Non Duplicate 0103', '0103 Group', even=even
+        data, column_name, '0103 Non-Unique Group', 'Non Duplicate 0103', '0103 Group', even=even
     )
 
 

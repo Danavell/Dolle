@@ -53,12 +53,18 @@ def returns_deacs_strings_before_or_after_ladder_out(agg, sensor_data):
     indices = sensor_data.loc[condition].index
     sensor_data.loc[indices, 'strings until next ladder'] = -1
     sensor_data.loc[indices, 'strings since last ladder'] = -1
-    groupby = sensor_data.groupby('JOBNUM')
+    groupby = sensor_data.groupby(['JOBNUM', '0103 ID'])
 
     sensor_data['strings until next ladder'] = groupby['strings until next ladder']\
         .fillna(method='ffill')
+
     sensor_data['strings since last ladder'] = groupby['strings since last ladder']\
         .fillna(method='ffill')
+
+    sensor_data['strings until next ladder'].replace(-1, np.nan, inplace=True)
+    groupby = sensor_data.groupby(['JOBNUM', '0103 ID'])
+    sensor_data['strings until next ladder'] = groupby['strings until next ladder'] \
+        .fillna(method='bfill')
 
     """
     Removes excess columns
@@ -77,8 +83,7 @@ def returns_deacs_strings_before_or_after_ladder_out(agg, sensor_data):
     JOBNUM. This is because the start of JOBNUMs are not representative
     of most of the data. Many strings enter and no ladders exit. 
     """
-    condition = (sensor_data['Non Duplicate 0101'] == 1) & \
-                (sensor_data['0103 non_unique ID'] > 1)
+    condition = (sensor_data['Non Duplicate 0101'] == 1)
     return sensor_data[condition], sensor_data
 
 

@@ -51,17 +51,34 @@ class StatsFeatureExtractor:
         agg_dict = {
             'Product': 'first',
             'Job Length(s)': 'sum',
+            'No. Deactivations': 'sum',
+            'Down Time(s)': ['sum', 'median', 'mean', 'std', 'max', 'min'],
             'Strings per Ladder': ['median', 'mean'],
             '0103 Count Vs Expected': ['median', 'mean'],
             '0102 Pace median(s)': 'median',
             '0102 Pace avg(s)': 'mean',
             '0103 Pace median(s)': 'median',
-            '0103 Pace avg(s)': 'mean'
+            '0103 Pace avg(s)': 'mean',
         }
+        stats = stats.sort_values(by='Start Time')
         self.data['sensor_data'] = sensor_data
         self.data['work_table'] = work_table
         self.data['stats'] = stats
-        self.data['agg_stats'] = stats.groupby('Product').agg(agg_dict)
+        agg_stats = stats.groupby('Product').agg(agg_dict)
+        temp = agg_stats[('Job Length(s)', 'sum')] - agg_stats[('Down Time(s)', 'sum')]
+        agg_stats[('Time Between Deactivations', 'mean')] = temp / agg_stats[('No. Deactivations', 'sum')]
+        self.data['agg_stats'] = agg_stats
+        deac_summary = agg_stats[
+            [('Product', 'first'),
+             ('Job Length(s)', 'sum'),
+             ('No. Deactivations', 'sum'),
+             ('Time Between Deactivations', 'mean'),
+             ('Down Time(s)', 'sum'),
+             ('Down Time(s)', 'median'),
+             ('Down Time(s)', 'max'),
+             ('Down Time(s)', 'min')]
+        ]
+        self.data['deactivations_summary'] = deac_summary
 
 
 class StatsFeatureExtractor0102Agg:
@@ -177,7 +194,7 @@ class MLFeatureExtractor0102:
 
         columns = machine.data_generation_columns
         sensor_data = fsd.create_non_duplicates(sensor_data)
-        sensor_data = fsd.calculate_pace(sensor_data, columns)
+        # sensor_data = fsd.calculate_pace(sensor_data, columns)
         sensor_data['0102 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0102', fillna_groupby_col='JOBNUM'
         )
@@ -231,7 +248,8 @@ class MLFeatureExtractor0102:
                 .astype(int)
             agg[f'0102 Pace >= {n} Count'] = 0
             agg.loc[indices, f'0102 Pace >= {n} Count'] = 1
-            agg = a_0102.sum_num_pace_ins_larger_than_n(agg, n)
+            func = a_0102.sum_num_pace_ins_larger_than_n
+            agg = a_0102.deacs_roll(agg, func, n)
 
             self.data[key] = agg
 

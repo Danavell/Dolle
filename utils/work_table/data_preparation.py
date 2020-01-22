@@ -420,11 +420,12 @@ def _fix_breaks(work_table, first, second):
     stops['QTYGOOD'] = 0
 
     merged = pd.concat([starts, stops])
-    merged.sort_values('StartDateTime', inplace=True)
+    if len(merged) > 0:
+        merged.sort_values('StartDateTime', inplace=True)
 
-    # Recalculate seconds
-    merged['Seconds'] = merged['StopDateTime'] - merged['StartDateTime']
-    merged['Seconds'] = merged['Seconds'].dt.total_seconds()
+        # Recalculate seconds
+        merged['Seconds'] = merged['StopDateTime'] - merged['StartDateTime']
+        merged['Seconds'] = merged['Seconds'].dt.total_seconds()
     return merged
 
 

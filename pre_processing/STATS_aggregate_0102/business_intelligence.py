@@ -8,26 +8,28 @@ def _calc_percentages(agg):
 
 
 def pie_chart_num_spikes_count(agg, roll=30):
-    col = '0102 Sum Pace >= 25'
+    col = '0102 Sum Pace ND >= 25'
     col_count = '0102 Pace >= 25 Count'
 
     total_spikes = np.sum(agg[col_count])
 
-    deacs = agg[agg['Label'] == 1]
+    condition = (agg['Label'] == 1) & \
+                (agg['0102 ID'] >= 0)
+    deacs = agg[condition].copy()
     deacs_count = deacs.groupby(col) \
                        .count() \
                        .iloc[:, 1] \
                        .reset_index() \
                        .copy()
 
-    non_deacs_count = agg.groupby('JOBNUM')[col_count] \
+    non_deacs_dataf = agg.groupby('JOBNUM')[col_count] \
                          .rolling(roll) \
                          .sum() \
                          .fillna(0) \
                          .copy()
 
-    non_deacs_count.index = agg.index
-    agg.loc[:, 'count'] = non_deacs_count
+    non_deacs_dataf.index = agg.index
+    agg.loc[:, 'count'] = non_deacs_dataf
     non_deacs_count = agg.groupby('count') \
                          .count() \
                          .iloc[:, 1] \

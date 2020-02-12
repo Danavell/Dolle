@@ -9,13 +9,14 @@ import pre_processing.STATS_aggregate_0102.business_intelligence as BI
 from pre_processing.utils import BaseDataFactory
 from pre_processing.aggregate_0102 import aggregates as ag
 
+BaseDataFactory.get_ladder_codes()
 # old_folder = '2020-01-06 04:44:58 - 2020-01-21 18:33:13'
-# # BaseDataFactory.get_ladder_codes()
+
 # old_data = BaseDataFactory.factory(
 #     1, old_folder, fix_duplicates=False, save=True
 # )
 
-new_folder = '2020-01-06 04:44:58 - 2020-01-22 12:57:03'
+new_folder = '2020-01-06 04:44:58 - 2020-02-12 10:04:57'
 new_data = BaseDataFactory.factory(
     1, new_folder, fix_duplicates=False, save=True
 )

@@ -66,18 +66,18 @@ def prep_erp(work_table):
         inplace=True
     )
 
-    # work_table.drop(
-    #     columns=[
-    #         'timestamp',
-    #         '__v',
-    #         'pack_group_id',
-    #         '_id',
-    #         'production_type',
-    #         'c_stop',
-    #         'c_start'
-    #     ], inplace=True,
-    #     axis=1
-    # )
+    work_table.drop(
+        columns=[
+            'timestamp',
+            '__v',
+            'pack_group_id',
+            '_id',
+            'production_type',
+            'c_stop',
+            'c_start'
+        ], inplace=True,
+        axis=1
+    )
 
     work_table = work_table.sort_values(by='StartDateTime')
     work_table = work_table.loc[work_table['active'] == 1, :]

@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, Dropout, LSTM
-from tensorflow import set_random_seed
-
-set_random_seed(2)
 
 
 class KerasBase:
@@ -20,11 +17,11 @@ class KerasBase:
         self._output_shape = output_shape
         self._early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
         self._mcp_save = ModelCheckpoint(
-            '/home/james/Documents/Development/Dolle/machine_learning/mdl_wts.hdf5',
+            r'/home/james/Documents/DolleProject/Dolle/machine_learning/mdl_wts.hdf5',
             save_best_only=True, monitor='val_loss', mode='min'
         )
         self._reduce_lr_loss = ReduceLROnPlateau(
-            monitor='val_loss', factor=0.1, patience=7, verbose=1, epsilon=1e-4, mode='min'
+            monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
         )
 
         """compile model using accuracy to measure model performance"""
@@ -107,8 +104,6 @@ class DolleLSTM(KerasBase):
         if not class_weights:
             class_weights = {i: 1 for i in range(output_shape)}
 
-        # class_weights = {0: 1, 1: 0.7, 2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3, 6: 0.3}
-        # class_weights = {0: 1, 1: 0.7}
         self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
         # fit network

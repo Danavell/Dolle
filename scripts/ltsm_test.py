@@ -216,13 +216,16 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import confusion_matrix
 
-aggregate_path = r'/home/james/Documents/Development/Dolle/csvs/2018-02-16 -> ' \
-                 r'2018-12-19/MLAgg/agg_all_three.csv'
+aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+                 r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
 
 agg_cols_to_use = [
-    'JOBNUM', 'Non Duplicate 0102', 'Sum 0102 Jam >= 20', '0103 Pace',
+    'JOBNUM', 'Non Duplicate 0102', '0103 Pace',
     '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time', 'Label'
 ]
+
+sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+              r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
 
 
 def slice_data(data, catch, num_columns):
@@ -243,9 +246,9 @@ def slice_data_overlapping(data, num_columns):
     return pd.concat([X, y], axis=1)
 
 
-catch = 4
+catch = 6
 skip = 1
-agg = pd.read_csv(aggregate_path, sep=';', usecols=agg_cols_to_use)
+agg = pd.read_csv(aggregate_path, sep=',', usecols=agg_cols_to_use)
 flattened = flatten(agg, catch + skip, 0, True)
 flattened.loc[:, 'JOBNUM'] = agg.loc[:, 'JOBNUM']
 groupby = flattened.groupby('JOBNUM')
@@ -292,14 +295,14 @@ reduce_lr_loss = ReduceLROnPlateau(
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 # fit network
-class_weight = {0: 1, 1: 5}
+class_weights = {0: 1, 1: 0.7, 2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3, 6: 0.3}
 history = model.fit(
     X_train, y_train, epochs=25, batch_size=5,
     validation_data=(X_test, y_test), verbose=2,
     shuffle=False, callbacks=[
         earlyStopping, mcp_save, reduce_lr_loss
     ],
-    class_weight=class_weight
+    class_weight=class_weights
 )
 
 # plot history
@@ -314,7 +317,7 @@ y_test_1D = pd.DataFrame(y_test).idxmax(axis=1)
 
 conf = confusion_matrix(y_test_1D, y_pred_1D)
 
-model.load_weights(filepath=r'/home/james/Documents/Development/Dolle/.mdl_wts.hdf5')
+model.load_weights(filepath=r'/home/james/Development/DolleProject/Dolle/.mdl_wts.hdf5')
 
 y_pred = model.predict(X_test)
 y_pred_1D = pd.DataFrame(y_pred).idxmax(axis=1)

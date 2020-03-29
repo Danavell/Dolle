@@ -24,7 +24,7 @@ def pace_diff_column_sqrt_cube(row, column, agg_stats, agg_sensor, new_column, o
 
 def calculate_pace(sensor_data, columns):
     sensor_data[columns['next_shifted']] = sensor_data.groupby('JOBNUM')[columns['_gen_shifted_columns_-1']].shift(-1)
-    sensor_data['next_Date'] = pd.to_datetime(sensor_data['next_Date'], utc=True)
+    sensor_data['next_Date'] = pd.to_datetime(sensor_data['next_Date'])
     """
     Remove nans and convert floats to integers
     """
@@ -54,13 +54,13 @@ def calculate_pace(sensor_data, columns):
 def _gen_pace_data(sensor_data, column):
     filtered = sensor_data[sensor_data[column] != 0].copy()
     date_shifted = filtered.groupby(['JOBNUM'])['Date'].shift(1)
-    pace = filtered['Date'] - pd.to_datetime(date_shifted, utc=True)
+    pace = filtered['Date'] - pd.to_datetime(date_shifted)
     return _to_seconds(pace)
 
 
 def calc_error_time(sensor_data, column, groupby_cols='JOBNUM'):
     sensor_data['previous_Date'] = sensor_data.groupby(groupby_cols)['Date'].shift(1)
-    sensor_data['previous_Date'] = pd.to_datetime(sensor_data['previous_Date'], utc=True)
+    sensor_data['previous_Date'] = pd.to_datetime(sensor_data['previous_Date'])
     sensor_data = sensor_data.loc[sensor_data[column] != 0, ['previous_Date', 'Date']].copy()
     return _to_seconds(sensor_data['Date'] - sensor_data['previous_Date'])
 

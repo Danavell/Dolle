@@ -8,23 +8,23 @@ from machine_learning.STATS import ml_stats, confused
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
-aggregate_path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/' \
-                 r'MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+                 r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
 
 agg_cols_to_use = [
-    'JOBNUM', 'Non Duplicate 0102', 'Sum 0102 Jam >= 20', '0103 Pace',
+    'JOBNUM', 'Non Duplicate 0102', '0103 Pace',
     '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time', 'Label'
 ]
 
-sensor_path = r'/home/james/Documents/Development/dolle_csvs/01-01-18 to 01-01-19/' \
-              r'MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
+sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+              r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
 
-agg = pd.read_csv(aggregate_path, sep=';', usecols=agg_cols_to_use)
-sensor_data = pd.read_csv(sensor_path, sep=';', parse_dates=['Date'], infer_datetime_format=True)
+agg = pd.read_csv(aggregate_path, sep=',', usecols=agg_cols_to_use)
+sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
 
 num_rows = 6
 skip = 1
-catch = 3
+catch = 6
 method = 'multi'
 
 X_train, y_train, X_test, y_test, meta = process_data(
@@ -32,8 +32,8 @@ X_train, y_train, X_test, y_test, meta = process_data(
 )
 
 model = m.DolleNeural1D()
-# , 2: 0.1, 3: 0.1, 4: 0.1, 5: 0.1, 6: 0.1
-class_weights = {0: 1, 1: 0.4, 2: 0.1, 3: 0.1, }
+
+class_weights = {0: 1, 1: 0.7, 2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3, 6: 0.3}
 history = model.fit(X_train, y_train, X_test=X_test, y_test=y_test, class_weights=class_weights)
 
 plt.plot(history.history['loss'], label='train')

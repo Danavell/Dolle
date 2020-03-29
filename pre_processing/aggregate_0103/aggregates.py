@@ -167,8 +167,11 @@ def make_n_length_jam_durations(sensor_data, end):
             'JOBNUM', f'Indgang 010{i}', f'previous_010{i}', f'next_010{i}',
             f'Non Duplicate 010{i}'
         ]
-        sliced = sensor_data.loc[:, columns].copy()
-        sensor_data[f'010{i} Jam'] = _make_010n_jam_groups(sliced, n=i)
+        try:
+            sliced = sensor_data.loc[:, columns].copy()
+            sensor_data[f'010{i} Jam'] = _make_010n_jam_groups(sliced, n=i)
+        except:
+            sensor_data[f'010{i} Jam'] = 0
 
     sensor_data = _make_new_jam_durations_loop(sensor_data, '0102 Jam', 2, end)
     sensor_data = _make_new_jam_durations_loop(sensor_data, '0103 Jam', 3, end)

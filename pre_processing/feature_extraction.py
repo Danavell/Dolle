@@ -300,7 +300,7 @@ class MLFeatureExtractor0103:
         self.data = None
 
     def feature_extraction(self, work_table, sensor_data, machine, meta):
-        jam = meta.get('jam', 20)
+        # jam = meta.get('jam', 20)
         drop = a_0103.drop_first_rows if meta.get('drop_first') else False
 
         columns = machine.data_generation_columns
@@ -312,13 +312,13 @@ class MLFeatureExtractor0103:
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
         funcs = cs.base_agg_funcs_0103
-        if jam:
-            num = 20
-            sensor_data = a_0103.make_n_length_jam_durations(
-                sensor_data, num
-            )
-            for i in range(num, 1, -1):
-                funcs[f'Sum 0102 Jam >= {i}'] = 'sum'
+        # if jam:
+        #     num = 20
+        #     sensor_data = a_0103.make_n_length_jam_durations(
+        #         sensor_data, num
+        #     )
+        #     for i in range(num, 1, -1):
+        #         funcs[f'Sum 0102 Jam >= {i}'] = 'sum'
 
         sensor_data = sd.get_dummies_concat(sensor_data)
         self.data = ut.make_aggregates(

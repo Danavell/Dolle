@@ -16,9 +16,9 @@ BaseDataFactory.get_ladder_codes()
 #     1, old_folder, fix_duplicates=False, save=True
 # )
 
-new_folder = '2020-01-06 04:44:58 - 2020-02-12 10:04:57'
+new_folder = '28-02-16 to 2018-12-19'
 new_data = BaseDataFactory.factory(
-    1, new_folder, fix_duplicates=False, save=True
+    8, new_folder, fix_duplicates=True, save=True
 )
 
 # a = data['sensor_data']

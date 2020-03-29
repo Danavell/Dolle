@@ -55,7 +55,7 @@ def flatten(agg, first_row, pred, catch=False):
 
 
 def scale(agg, scaler=None):
-    if not isinstance(scaler, sklearn.preprocessing.data.MinMaxScaler):
+    if not isinstance(scaler, MinMaxScaler):
         scaler = MinMaxScaler()
     scaled = scaler.fit_transform(agg)
     agg = pd.DataFrame(data=scaled, columns=agg.columns, index=agg.index)
@@ -439,7 +439,6 @@ def return_catch_condition(agg, skip, catch):
 
     else:
         raise Exception("Algorithm doesn't support catch > 12")
-
 
 
 def labelize(data, label):

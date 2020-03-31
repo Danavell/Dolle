@@ -6,7 +6,7 @@ from sklearn.metrics import confusion_matrix
 import machine_learning.PreProcess.Utilities as ml_util
 
 from machine_learning import MLModels as m
-
+from machine_learning.STATS import confused
 
 aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
                  r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
@@ -17,16 +17,16 @@ aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 20
 # ]
 
 agg_cols_to_use = [
-    'Non Duplicate 0102', '0103 Pace',
+    'JOBNUM', 'Non Duplicate 0102', '0103 Pace',
     '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time', 'Label'
 ]
 
 
 agg = pd.read_csv(aggregate_path, sep=',', usecols=agg_cols_to_use)
 
-num_rows = 6
+num_rows = 3
 skip = 1
-catch = 3
+catch = 1
 
 first_row, skip = ml_util.adjust_inputs_catch(num_rows, skip, catch)
 agg = ml_util.flatten(agg, first_row, skip, True)
@@ -62,7 +62,7 @@ X_test = X_test.iloc[:, :6*catch]
 
 model = m.DolleNeural1D()
 
-class_weights = {0: 1, 1: 0.7, 2: 0.7, 3: 0.7}
+class_weights = {0: 1, 1: 1}
 # class_weights = {i: 1 for i in range(catch + 1)}
 history = model.fit(X_train, y_train, X_test=X_test, y_test=y_test, class_weights=class_weights)
 
@@ -79,11 +79,12 @@ y_pred_pd = pd.DataFrame(y_pred, index=y_test.index)
 y_pred_1D = y_pred_pd.idxmax(axis=1)
 y_test_1D = pd.DataFrame(y_test).idxmax(axis=1)
 
-ConfusionMatrix = confusion_matrix(y_test_1D, y_pred_1D)
+ConfusionMatrix = confused(y_test, y_pred, meta)
+ConfusionMatrix_2 = confusion_matrix(y_test_1D, y_pred_1D)
 
-
+#
 import numpy as np
-
+#
 a = [[[0, 1]],
      [[2, 3]],
      [[4, 5]],
@@ -94,7 +95,24 @@ a = [[[0, 1]],
 
 b = np.hstack((a[:-2], a[1:-1], a[2:]))
 
+agg.drop('JOBNUM', axis=1, inplace=True)
 c = agg.to_numpy()
-z = np.hstack((c[2:], c[1:-1], c[:-2]))\
-      .reshape(-1, 3, 6)
+# z = np.hstack((c[:-2], c[1:-1], c[2:])) \
+#       .reshape(-1, 3, 6)
 
+z = np.hstack((c[:-3], c[1:-2], c[2:-1], c[3:])) \
+      .reshape(-1, 4, 6)
+
+rows = 4
+eval_comp = [
+    f'a[:-{rows - 1}:]'
+    if i == 0
+    else f'a[:{rows}:]' if i == rows -1
+    else f'a[{i}:-{rows - i - 1}]'
+    for i in range(rows)
+]
+
+import numpy as np
+a = np.arange(10).reshape(5, 2)
+
+b = np.concatenate([0, 1], a)

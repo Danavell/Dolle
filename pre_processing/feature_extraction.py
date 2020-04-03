@@ -311,14 +311,12 @@ class MLFeatureExtractor0103:
         sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
+        condition = sensor_data['Non Duplicate 0101'] == 1
+        deacs = sensor_data[condition][['Non Duplicate 0101']].copy()
+        deacs['0101 Group'] = np.arange(1, len(deacs.index) + 1)
+        sensor_data.drop('0101 Group', axis=1)
+        sensor_data['0101 Group'] = deacs['0101 Group']
         funcs = cs.base_agg_funcs_0103
-        # if jam:
-        #     num = 20
-        #     sensor_data = a_0103.make_n_length_jam_durations(
-        #         sensor_data, num
-        #     )
-        #     for i in range(num, 1, -1):
-        #         funcs[f'Sum 0102 Jam >= {i}'] = 'sum'
 
         sensor_data = sd.get_dummies_concat(sensor_data)
         self.data = ut.make_aggregates(

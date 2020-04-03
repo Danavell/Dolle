@@ -22,9 +22,9 @@ sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-
 agg = pd.read_csv(aggregate_path, sep=',', usecols=agg_cols_to_use)
 sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
 
-num_rows = 6
+num_rows = 4
 skip = 1
-catch = 6
+catch = 1
 method = 'multi'
 
 X_train, y_train, X_test, y_test, meta = process_data(

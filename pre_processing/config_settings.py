@@ -245,7 +245,6 @@ agg_funcs_0102 = {
 base_agg_funcs_0103 = {
     'JOBNUM': 'first',
     'Date': 'first',
-    '0103 ID': 'first',
     'Non Duplicate 0101': 'sum',
     'Non Duplicate 0102': 'sum',
     'Non Duplicate 0104': 'sum',
@@ -255,5 +254,7 @@ base_agg_funcs_0103 = {
     '0104 Alarm Time': 'sum',
     '0105 Alarm Time': 'sum',
     '0106 Alarm Time': 'sum',
+    '0101 Group': 'min',
+    '0103 ID': 'first',
 }
 

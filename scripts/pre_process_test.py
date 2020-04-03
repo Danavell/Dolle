@@ -10,6 +10,48 @@ from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import MinMaxScaler
 
 
+def load_data():
+    aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+                     r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+
+    agg_cols_to_use = [
+        'JOBNUM', 'Date', 'Non Duplicate 0102', '0103 Pace',
+        '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time',
+        'Label', '0101 Group', '0103 ID',
+    ]
+
+    original = pd.read_csv(
+        aggregate_path, sep=',', usecols=agg_cols_to_use,
+        parse_dates=['Date'], infer_datetime_format=True
+    )
+    agg = original.copy()
+    agg = agg.drop(['0101 Group', '0103 ID', 'Date'], axis=1)
+
+    sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
+                  r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
+
+    sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
+    sensor_data['0101 Group'].fillna(0, inplace=True)
+    condition = sensor_data['0101 Group'] > 0
+    deac_dates = sensor_data[condition][['0101 Group', 'Date']].copy().dropna()
+
+    deac_times = pd.merge(
+        left=original[['Date', '0103 ID', '0101 Group']],
+        right=deac_dates,
+        left_on='0101 Group',
+        right_on='0101 Group',
+        how='left',
+        suffixes=('', '_deac')
+    )
+    return agg, deac_times
+
+
+def shift_deac_dates(deac_times, catch):
+    for i in range(1, catch + 1):
+        deac_times[f'{i}'] = deac_times['Date_deac'].shift(-i)
+    return deac_times
+
+
 def _to_numpy(agg, label):
     return agg[label] \
         .to_numpy() \
@@ -38,7 +80,7 @@ def _add_distance_label(x, catch):
     return t
 
 
-def _pad_dstack_sequences(x, rows):
+def _pad_dstack_sequences(x, rows, columns):
     x = np.concatenate(
         [x[:, 1:], np.zeros([rows-1, x.shape[1]-1])]
     )
@@ -77,11 +119,11 @@ def _train_test_deacs(x, d_y, i):
     )
     data = pd.DataFrame(data, columns=['pred', 'idx'])
 
-    global test_idx
+    test_idx = pd.DataFrame(columns=['pred', 'idx'])
     data_tuple = (test_idx, data)
     test_idx = pd.concat(data_tuple, axis=0)
 
-    return dX_train, dX_test, dy_train, dy_test
+    return dX_train, dX_test, dy_train, dy_test, test_idx
 
 
 def _train_test_non_deacs(X):
@@ -100,7 +142,7 @@ def _train_test_non_deacs(X):
     return ndX_train, ndX_test, dy_train, dy_test
 
 
-def _upsample(ndX, dX, i):
+def _upsample(x, ndX, dX, i):
     nds, ds = ndX.shape[0], dX.shape[0]
     diff = nds // ds
     remainder = nds - diff * ds
@@ -113,14 +155,14 @@ def _upsample(ndX, dX, i):
     return X, y
 
 
-def _train_test_split(x, d_y, balance_test=True):
+def _train_test_split(x, d_y, catch, balance_test=True):
     nd = _split_labels(x, d_y, 0)
     ndX_train, ndX_test, ndy_train, ndy_test = \
         _train_test_non_deacs(nd)
     for i in range(1, catch + 1):
-        dX_train, dX_test, dy_train, dy_test = \
+        dX_train, dX_test, dy_train, dy_test, test_idx = \
             _train_test_deacs(x, d_y, i)
-        xtr, ytr = _upsample(ndX_train, dX_train, i)
+        xtr, ytr = _upsample(x, ndX_train, dX_train, i)
 
         if 'X_train' in locals() and 'y_train' in locals():
             X_train = np.concatenate((X_train, xtr))
@@ -130,7 +172,7 @@ def _train_test_split(x, d_y, balance_test=True):
             y_train = np.concatenate((ndy_train, ytr))
 
         if balance_test:
-            dX_test, dy_test = _upsample(ndX_test, dX_test, i)
+            dX_test, dy_test = _upsample(x, ndX_test, dX_test, i)
 
         if 'X_test' in locals() and 'y_test' in locals():
             X_test = np.concatenate((X_test, dX_test))
@@ -139,91 +181,118 @@ def _train_test_split(x, d_y, balance_test=True):
             X_test = np.concatenate((ndX_test, dX_test))
             y_test = np.concatenate((ndy_test, dy_test))
 
-    return X_train, y_train, X_test, y_test
+    shuffled = pd.DataFrame(y_test)\
+                 .sample(frac=1, replace=False)
+    idx = shuffled.index.to_numpy()
+
+    shuffled.reset_index(drop=False, inplace=True)
+    condition = shuffled.iloc[:, 1] > 0
+    shuffled_deacs = shuffled[condition].copy().dropna()
+    shuffled_deacs.reset_index(drop=False, inplace=True)
+
+    test_idx.reset_index(drop=True, inplace=True)
+    zeros = y_test[~condition]
+    test_idx['orig test indices'] = test_idx.index + len(zeros)
+
+    q = pd.merge(
+        left=shuffled_deacs,
+        right=test_idx,
+        left_on='index',
+        right_on='orig test indices',
+        how='left'
+    )
+
+    q.set_index('level_0', inplace=True, drop=True)
+    test_idx =q[['pred', 'idx']]
+    y_test = y_test[idx]
+    X_test = X_test[idx, :, :]
+
+    return X_train, y_train, X_test, y_test, q
 
 
-aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-                 r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+def flatten_idxmax_y(y_pred, y_test):
+    y_pred_pd = pd.DataFrame(y_pred, index=y_test.index)
+    y_pred_1D = y_pred_pd.idxmax(axis=1)
+    y_test_1D = pd.DataFrame(y_test).idxmax(axis=1)
+    return y_pred_1D, y_test_1D
 
-agg_cols_to_use = [
-    'JOBNUM', 'Date', 'Non Duplicate 0102', '0103 Pace',
-    '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time',
-    'Label', '0101 Group', '0103 ID',
-]
 
-original = pd.read_csv(
-    aggregate_path, sep=',', usecols=agg_cols_to_use,
-    parse_dates=['Date'], infer_datetime_format=True
-)
-agg = original.copy()
-agg = agg.drop(['0101 Group', '0103 ID', 'Date'], axis=1)
+def calc_time_until_deac(catch, test_idx, y_pred_1D, deac_times):
+    q = pd.merge(
+        left=test_idx,
+        right=pd.DataFrame(y_pred_1D),
+        left_index=True,
+        right_index=True,
+        how='left'
+    ).iloc[:, :-1].set_index('idx', drop=True)
 
-sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-              r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
+    time_matrix = pd.merge(
+        left=deac_times,
+        right=q,
+        left_index=True,
+        right_index=True,
+        how='left'
+    )
 
-sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
-sensor_data['0101 Group'].fillna(0, inplace=True)
-condition = sensor_data['0101 Group'] > 0
-deac_dates = sensor_data[condition][['0101 Group', 'Date']].copy().dropna()
+    for i in range(1, catch + 1):
+        condition = time_matrix['pred'] == i
+        a = time_matrix[condition]
+        t = (a[f'{i}'] - a['Date']).dt.total_seconds()
+        t = pd.DataFrame(t, columns=['prediction time'])
+        if 'prediction time' in q.columns:
+            q.loc[t.index, 'prediction time'] = t['prediction time']
+        else:
+            q = pd.merge(
+                left=q,
+                right=t,
+                left_index=True,
+                right_index=True,
+                how='left'
+            )
 
-deac_times = pd.merge(
-    left=original[['Date', '0103 ID', '0101 Group']],
-    right=deac_dates,
-    left_on='0101 Group',
-    right_on='0101 Group',
-    how='left',
-    suffixes=('', '_deac')
-)
+    q.sort_index(inplace=True)
+    return q.iloc[1:, :].to_numpy()
 
-catch = 2
-rows = 3
-columns = 6
 
-deac_times['Date_start'] = deac_times['Date'].shift(-1)
-for i in range(1, catch + 1):
-    deac_times[f'{i}'] = deac_times['Date_deac'].shift(-i)
+def pre_process(catch=2, rows=3, columns=6, balance_test=True):
+    agg, deac_times = load_data()
+    deac_times = shift_deac_dates(deac_times, catch)
 
-test_idx = pd.DataFrame(columns=['pred', 'idx'])
+    x = agg.to_numpy()
+    x = _split_apply(x, 0, _add_distance_label, catch)
+    d_y = x[:, -1].reshape(-1, 1)
 
-x = agg.to_numpy()
-x = _split_apply(x, 0, _add_distance_label, catch)
-d_y = x[:, -1].reshape(-1, 1)
+    x = x[:, :-1]
+    _scaler = MinMaxScaler()
+    _scaler.fit(x)
+    x = _scaler.transform(x)
 
-x = x[:, :-1]
-_scaler = MinMaxScaler()
-_scaler.fit(x)
-x = _scaler.transform(x)
+    x = _split_apply(
+        x, 0, _pad_dstack_sequences, rows, columns
+    )
+    X_train, y_train, X_test, y_test, test_idx = \
+        _train_test_split(x, d_y, catch, balance_test=balance_test
+    )
 
-x = _split_apply(
-    x, 0, _pad_dstack_sequences, rows
-)
-X_train, y_train, X_test, y_test = \
-    _train_test_split(x, d_y, balance_test=False
-)
+    y_train = pd.get_dummies(y_train.reshape(-1))
+    y_test = pd.get_dummies(y_test.reshape(-1))
 
-y_train = pd.get_dummies(y_train.reshape(-1))
-y_test = pd.get_dummies(y_test.reshape(-1))
+    meta = dict()
+    meta['scaler'] = _scaler
+    meta['deac_times'] = deac_times
+    meta['test_idx'] = test_idx
+    return X_train, y_train, X_test, y_test, meta
 
-model = Sequential()
-model.add(LSTM(
-    units=3, input_shape=(rows, columns), return_sequences=True, dropout=0.2, recurrent_dropout=0.2
-))
-model.add(LSTM(3, return_sequences=False))
-model.add(Dense(catch + 1, activation='sigmoid'))
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=0, mode='min')
-mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
-reduce_lr_loss = ReduceLROnPlateau(
-    monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
-)
+from machine_learning.MLModels import DolleLSTM
+
+X_train, y_train, X_test, y_test, meta = pre_process()
+deac_times = meta['deac_times']
+test_idx = meta['test_idx']
+
+model = DolleLSTM()
 history = model.fit(
-    X_train, y_train, batch_size=32, epochs=50,
-    validation_data=(X_test, y_test), shuffle=False,
-    callbacks=[
-        earlyStopping, mcp_save, reduce_lr_loss
-    ],
-    class_weight={0: 1, 1: 0.2, 2: 0.2}
+    X_train, y_train, X_test, y_test, epochs=50, class_weights={0: 1, 1: 0.2, 2: 0.2}
 )
 
 plt.plot(history.history['loss'], label='train')
@@ -231,55 +300,36 @@ plt.plot(history.history['val_loss'], label='test')
 plt.legend()
 plt.show()
 
-score, acc = model.evaluate(X_test, y_test, batch_size=1, verbose=0)
-
 y_pred = model.predict(X_test)
 
-# model.save(r'/home/james/Documents/model.hdf5')
-y_pred_pd = pd.DataFrame(y_pred, index=y_test.index)
-
-y_pred_1D = y_pred_pd.idxmax(axis=1)
-y_test_1D = pd.DataFrame(y_test).idxmax(axis=1)
-
+y_pred_1D, y_test_1D = flatten_idxmax_y(y_pred, y_test)
 ConfusionMatrix = confusion_matrix(y_test_1D, y_pred_1D)
-
-start = len(y_pred_1D) - len(test_idx)
-y_pred_1D_df = pd.DataFrame(y_pred_1D)
-b = y_pred_1D_df.iloc[start:, 0]\
-                .reset_index(drop=True)
-
-test_idx.reset_index(drop=True, inplace=True)
-test_idx['y_pred'] = b
-
-test_idx.set_index('idx', drop=True, inplace=True)
-
-time_matrix = pd.merge(
-    left=deac_times,
-    right=test_idx,
-    left_index=True,
-    right_index=True,
-    how='left'
-)
-
-for i in range(1, catch + 1):
-    condition = time_matrix['pred'] == i
-    a = time_matrix[condition]
-    t = (a[f'{i}'] - a['Date_start']).dt.total_seconds()
-    t = pd.DataFrame(t, columns=['prediction time'])
-    if 'prediction time' in test_idx.columns:
-        test_idx.loc[t.index, 'prediction time'] = t['prediction time']
-    else:
-        test_idx = pd.merge(
-            left=test_idx,
-            right=t,
-            left_index=True,
-            right_index=True,
-            how='left'
-        )
-
-
-d = test_idx.iloc[1:, :].to_numpy()
-d = d.reshape(1, d.shape[0], d.shape[1])
 c = ConfusionMatrix.reshape(
     1, ConfusionMatrix.shape[0], ConfusionMatrix.shape[1]
 )
+times = calc_time_until_deac(2, test_idx, y_pred_1D, deac_times)
+
+np.save(r'/home/james/Documents/DolleProject/Dolle/scripts', c)
+
+
+# model = Sequential()
+# model.add(LSTM(
+#     units=3, input_shape=(rows, columns), return_sequences=True, dropout=0.2, recurrent_dropout=0.2
+# ))
+# model.add(LSTM(3, return_sequences=False))
+# model.add(Dense(catch + 1, activation='sigmoid'))
+# model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+#
+# earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=0, mode='min')
+# mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
+# reduce_lr_loss = ReduceLROnPlateau(
+#     monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
+# )
+# history = model.fit(
+#     X_train, y_train, batch_size=32, epochs=100,
+#     validation_data=(X_test, y_test), shuffle=False,
+#     callbacks=[
+#         earlyStopping, mcp_save, reduce_lr_loss
+#     ],
+#     class_weight={0: 1, 1: 0.2, 2: 0.2}
+# )

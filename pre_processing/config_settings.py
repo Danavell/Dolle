@@ -244,7 +244,7 @@ agg_funcs_0102 = {
 
 base_agg_funcs_0103 = {
     'JOBNUM': 'first',
-    'Date': 'first',
+    'Date': 'last',
     'Non Duplicate 0101': 'sum',
     'Non Duplicate 0102': 'sum',
     'Non Duplicate 0104': 'sum',

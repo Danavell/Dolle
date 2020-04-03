@@ -54,6 +54,9 @@ class KerasBase:
         self.model.load_weights(path)
         return self.model.predict(X_test)
 
+    def summary(self):
+        return self.model.summary()
+
 
 class DolleNeural1D(KerasBase):
     def __init__(self):
@@ -83,34 +86,29 @@ class DolleNeural1D(KerasBase):
 
 
 class DolleLSTM(KerasBase):
-    def fit(self, X_train, y_train, X_test=None, y_test=None, epochs=100, meta=None, class_weights=None):
+    def fit(self, X_train, y_train, X_test=None, y_test=None, input_shape=(3, 6), epochs=100, class_weights=None):
         output_shape = y_train.shape[1]
-        self.model.add(LSTM(3, input_shape=(
-            X_train.shape[1], X_train.shape[2]), return_sequences=True, dropout=0.2, recurrent_dropout=0.2)
-                  )
+        self.model.add(LSTM(
+            3, input_shape=input_shape, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)
+        )
         self.model.add(LSTM(3, return_sequences=False))
         self.model.add(Dense(output_shape, activation='softmax'))
 
         # fit network
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=0, mode='min')
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, mode='min')
         mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
         reduce_lr_loss = ReduceLROnPlateau(
             monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
         )
 
-        if meta:
-            class_weights = meta.get('class_weights')
-
         if not class_weights:
             class_weights = {i: 1 for i in range(output_shape)}
 
-        self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-        # fit network
-        # class_weight = {0: 1, 1: 1}
         return self.model.fit(
-            X_train, y_train, epochs=epochs, batch_size=5,
-            validation_data=(X_test, y_test), verbose=2,
+            X_train, y_train, epochs=epochs, batch_size=32,
+            validation_data=(X_test, y_test), verbose=1,
             shuffle=False, callbacks=[
                 earlyStopping, mcp_save, reduce_lr_loss
             ],

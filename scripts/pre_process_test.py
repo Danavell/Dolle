@@ -1,18 +1,10 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from keras.models import Sequential
-from keras.layers import Dense, LSTM
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-
-from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import MinMaxScaler
 
 
-def load_data():
-    aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-                     r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+def load_data(agg_path, sensor_path):
 
     agg_cols_to_use = [
         'JOBNUM', 'Date', 'Non Duplicate 0102', '0103 Pace',
@@ -21,14 +13,11 @@ def load_data():
     ]
 
     original = pd.read_csv(
-        aggregate_path, sep=',', usecols=agg_cols_to_use,
+        agg_path, sep=',', usecols=agg_cols_to_use,
         parse_dates=['Date'], infer_datetime_format=True
     )
     agg = original.copy()
     agg = agg.drop(['0101 Group', '0103 ID', 'Date'], axis=1)
-
-    sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-                  r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
 
     sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
     sensor_data['0101 Group'].fillna(0, inplace=True)
@@ -80,7 +69,7 @@ def _add_distance_label(x, catch):
     return t
 
 
-def _pad_dstack_sequences(x, rows, columns):
+def _pad_stack_sequences(x, rows, columns, three_d=True):
     x = np.concatenate(
         [x[:, 1:], np.zeros([rows-1, x.shape[1]-1])]
     )
@@ -91,14 +80,25 @@ def _pad_dstack_sequences(x, rows, columns):
         else f'x[{i}:-{rows - i - 1}]'
         for i in range(rows)
     ]
-    eval_str = f"np.hstack(({', '.join(eval_comp)}))" \
-                 f".reshape(-1, {rows}, {columns})"
-    return eval(eval_str)
+    eval_str = f"np.hstack(({', '.join(eval_comp)}))"
+    t = eval(eval_str)
+    return t.reshape(-1, rows, columns) if three_d else t
 
 
 def _split_labels(X, y, i):
     idx = np.where(y == i)[0]
-    return X[idx, :, :]
+    return X[idx, :, :], idx
+
+
+def _concat_y_orig_indices(dy, idx):
+    data = np.concatenate(
+        [dy.reshape(-1, 1), idx.reshape(-1, 1)], axis=1
+    )
+    data = pd.DataFrame(data, columns=['pred', 'idx'])
+
+    test_idx = pd.DataFrame(columns=['pred', 'idx'])
+    data_tuple = (test_idx, data)
+    return pd.concat(data_tuple, axis=0)
 
 
 def _train_test_deacs(x, d_y, i):
@@ -114,14 +114,7 @@ def _train_test_deacs(x, d_y, i):
     dy_train = np.full((dX_train.shape[0], 1), i)
     dy_test = np.full((dX_test.shape[0], 1), i)
 
-    data = np.concatenate(
-        [dy_test.reshape(-1, 1), idx.reshape(-1, 1)], axis=1
-    )
-    data = pd.DataFrame(data, columns=['pred', 'idx'])
-
-    test_idx = pd.DataFrame(columns=['pred', 'idx'])
-    data_tuple = (test_idx, data)
-    test_idx = pd.concat(data_tuple, axis=0)
+    test_idx = _concat_y_orig_indices(dy_test, idx)
 
     return dX_train, dX_test, dy_train, dy_test, test_idx
 
@@ -142,27 +135,83 @@ def _train_test_non_deacs(X):
     return ndX_train, ndX_test, dy_train, dy_test
 
 
-def _upsample(x, ndX, dX, i):
+def shuffle_data(y_test, t_idx):
+    t_idx.reset_index(drop=True, inplace=True)
+    condition = y_test == 0
+    zeros_length = len(y_test[condition])
+
+    t_idx.index += zeros_length
+    z = pd.DataFrame(
+        y_test, columns=['y']
+    )
+    z['orig_indices'] = np.nan
+    z.loc[t_idx.index, 'orig_indices'] = t_idx['idx']
+
+    shuffled = pd.DataFrame(z)\
+                 .sample(frac=1, replace=False)
+    idx = shuffled.index.to_numpy()
+    return shuffled, idx
+
+
+def _upsample(ndX, dX, i, t_idx=None):
     nds, ds = ndX.shape[0], dX.shape[0]
     diff = nds // ds
     remainder = nds - diff * ds
     X = np.tile(dX, (diff, 1, 1))
     idx = np.random.choice(
-        nds, remainder, replace=False
+        ds, remainder, replace=False
     )
-    X = np.concatenate((X, x[idx, :, :]), axis=0)
+    X = np.concatenate((X, dX[idx, :, :]), axis=0)
     y = np.full((X.shape[0], 1), i)
-    return X, y
+    if isinstance(t_idx, pd.DataFrame):
+        t_idx = t_idx.to_numpy()
+        q = np.tile(t_idx, (diff, 1))
+        t_idx = np.concatenate((q, t_idx[idx, :]), axis=0)
+        t_idx = pd.DataFrame(t_idx, columns=['pred', 'idx'])
+    return X, y, t_idx
+
+
+def _upsample_no_tts(x, d_y, catch):
+    nd, _ = _split_labels(x, d_y, 0)
+    for i in range(1, catch + 1):
+        d, idx = _split_labels(x, d_y, i)
+        i_s = np.full((idx.shape[0], 1), i)
+        idx = np.concatenate(
+            (i_s, idx.reshape(-1, 1)),
+            axis=1
+        )
+        idx = pd.DataFrame(idx)
+        x_i, y_i, idx = _upsample(nd, d, i, idx)
+        if 'X' in locals() and 'y' in locals():
+            X = np.concatenate((X, x_i), axis=0)
+            y = np.concatenate((y, y_i), axis=0)
+        else:
+            X = np.concatenate((nd, x_i), axis=0)
+            y = np.concatenate(
+                (np.zeros(nd.shape[0]).reshape(-1, 1), y_i),
+                axis=0
+            )
+
+        if 't_idx' in locals():
+            t_idx = pd.concat([t_idx, idx], axis=0)
+        else:
+            t_idx = idx
+
+    shuffled, idx = shuffle_data(y, t_idx)
+    y = y[idx]
+    X = X[idx, :, :]
+    shuffled.reset_index(drop=True, inplace=True)
+    return X, y, shuffled
 
 
 def _train_test_split(x, d_y, catch, balance_test=True):
-    nd = _split_labels(x, d_y, 0)
+    nd, _ = _split_labels(x, d_y, 0)
     ndX_train, ndX_test, ndy_train, ndy_test = \
         _train_test_non_deacs(nd)
     for i in range(1, catch + 1):
         dX_train, dX_test, dy_train, dy_test, test_idx = \
             _train_test_deacs(x, d_y, i)
-        xtr, ytr = _upsample(x, ndX_train, dX_train, i)
+        xtr, ytr, _ = _upsample(ndX_train, dX_train, i)
 
         if 'X_train' in locals() and 'y_train' in locals():
             X_train = np.concatenate((X_train, xtr))
@@ -172,7 +221,9 @@ def _train_test_split(x, d_y, catch, balance_test=True):
             y_train = np.concatenate((ndy_train, ytr))
 
         if balance_test:
-            dX_test, dy_test = _upsample(x, ndX_test, dX_test, i)
+            dX_test, dy_test, test_idx = _upsample(
+                ndX_test, dX_test, i, test_idx
+            )
 
         if 'X_test' in locals() and 'y_test' in locals():
             X_test = np.concatenate((X_test, dX_test))
@@ -181,33 +232,37 @@ def _train_test_split(x, d_y, catch, balance_test=True):
             X_test = np.concatenate((ndX_test, dX_test))
             y_test = np.concatenate((ndy_test, dy_test))
 
-    shuffled = pd.DataFrame(y_test)\
-                 .sample(frac=1, replace=False)
-    idx = shuffled.index.to_numpy()
+        if 'y_test_idx' in locals():
+            y_test_idx = pd.concat([y_test_idx, test_idx], axis=0)
+        else:
+            y_test_idx = test_idx
 
-    shuffled.reset_index(drop=False, inplace=True)
-    condition = shuffled.iloc[:, 1] > 0
-    shuffled_deacs = shuffled[condition].copy().dropna()
-    shuffled_deacs.reset_index(drop=False, inplace=True)
+    shuffled, idx = shuffle_data(y_test, y_test_idx)
 
-    test_idx.reset_index(drop=True, inplace=True)
-    zeros = y_test[~condition]
-    test_idx['orig test indices'] = test_idx.index + len(zeros)
-
-    q = pd.merge(
-        left=shuffled_deacs,
-        right=test_idx,
-        left_on='index',
-        right_on='orig test indices',
-        how='left'
-    )
-
-    q.set_index('level_0', inplace=True, drop=True)
-    test_idx =q[['pred', 'idx']]
     y_test = y_test[idx]
     X_test = X_test[idx, :, :]
+    shuffled.reset_index(drop=True, inplace=True)
+    return X_train, y_train, X_test, y_test, shuffled
 
-    return X_train, y_train, X_test, y_test, q
+
+def prep_data(agg, deac_times, catch, rows, columns, scaler=None, three_d=True):
+    deac_times = shift_deac_dates(deac_times, catch)
+
+    x = agg.to_numpy()
+    x = _split_apply(x, 0, _add_distance_label, catch)
+    d_y = x[:, -1].reshape(-1, 1)
+    x = x[:, :-1]
+
+    if not isinstance(scaler, MinMaxScaler):
+        scaler = MinMaxScaler()
+
+    scaler.fit(x)
+    x = scaler.transform(x)
+
+    x = _split_apply(
+        x, 0, _pad_stack_sequences, rows, columns, three_d
+    )
+    return x, d_y, deac_times, scaler
 
 
 def flatten_idxmax_y(y_pred, y_test):
@@ -224,8 +279,15 @@ def calc_time_until_deac(catch, test_idx, y_pred_1D, deac_times):
         left_index=True,
         right_index=True,
         how='left'
-    ).iloc[:, :-1].set_index('idx', drop=True)
-
+    )
+    q = q.dropna()
+    q.drop_duplicates(keep='first', inplace=True)
+    q.set_index('orig_indices', inplace=True)
+    columns = {
+        'y': 'y_true',
+        0: 'y_pred'
+    }
+    q.rename(columns=columns, inplace=True)
     time_matrix = pd.merge(
         left=deac_times,
         right=q,
@@ -235,7 +297,8 @@ def calc_time_until_deac(catch, test_idx, y_pred_1D, deac_times):
     )
 
     for i in range(1, catch + 1):
-        condition = time_matrix['pred'] == i
+        condition = (time_matrix['y_true'] == i) & \
+                    (time_matrix['y_pred'] == i)
         a = time_matrix[condition]
         t = (a[f'{i}'] - a['Date']).dt.total_seconds()
         t = pd.DataFrame(t, columns=['prediction time'])
@@ -250,25 +313,48 @@ def calc_time_until_deac(catch, test_idx, y_pred_1D, deac_times):
                 how='left'
             )
 
-    q.sort_index(inplace=True)
-    return q.iloc[1:, :].to_numpy()
+    q = q[['y_true', 'prediction time']].sort_index().dropna()
+    return q.to_numpy(), time_matrix
 
 
-def pre_process(catch=2, rows=3, columns=6, balance_test=True):
-    agg, deac_times = load_data()
+def pre_process_no_tts(agg_path, sensor_path, catch=2, rows=3,
+                       columns=6, scaler=None, balance_classes=True,
+                       three_d=True
+                       ):
+    agg, deac_times = load_data(agg_path, sensor_path)
     deac_times = shift_deac_dates(deac_times, catch)
 
-    x = agg.to_numpy()
-    x = _split_apply(x, 0, _add_distance_label, catch)
-    d_y = x[:, -1].reshape(-1, 1)
+    x, d_y, deac_times, scaler = prep_data(
+        agg, deac_times, catch, rows, columns, scaler, three_d
+    )
 
-    x = x[:, :-1]
-    _scaler = MinMaxScaler()
-    _scaler.fit(x)
-    x = _scaler.transform(x)
+    if balance_classes:
+        x, d_y, test_idx = _upsample_no_tts(x, d_y, catch)
+    else:
+        test_idx = np.concatenate(
+            (d_y.reshape(-1, 1), np.arange(d_y.shape[0]).reshape(-1, 1)),
+            axis=1
+        )
+        test_idx = pd.DataFrame(test_idx, columns=['y', 'orig_indices'])
 
-    x = _split_apply(
-        x, 0, _pad_dstack_sequences, rows, columns
+    y = pd.get_dummies(d_y.reshape(-1))
+
+    meta = dict()
+    meta['scaler'] = scaler
+    meta['deac_times'] = deac_times
+    meta['test_idx'] = test_idx
+    return x, y, meta
+
+
+def pre_process(agg_path, sensor_path, catch=2, rows=3,
+                columns=6, balance_test=True, scaler=None,
+                three_d=True
+                ):
+    agg, deac_times = load_data(agg_path, sensor_path)
+    deac_times = shift_deac_dates(deac_times, catch)
+
+    x, d_y, deac_times, scaler = prep_data(
+        agg, deac_times, catch, rows, columns, scaler, three_d
     )
     X_train, y_train, X_test, y_test, test_idx = \
         _train_test_split(x, d_y, catch, balance_test=balance_test
@@ -278,38 +364,10 @@ def pre_process(catch=2, rows=3, columns=6, balance_test=True):
     y_test = pd.get_dummies(y_test.reshape(-1))
 
     meta = dict()
-    meta['scaler'] = _scaler
+    meta['scaler'] = scaler
     meta['deac_times'] = deac_times
     meta['test_idx'] = test_idx
     return X_train, y_train, X_test, y_test, meta
-
-
-from machine_learning.MLModels import DolleLSTM
-
-X_train, y_train, X_test, y_test, meta = pre_process()
-deac_times = meta['deac_times']
-test_idx = meta['test_idx']
-
-model = DolleLSTM()
-history = model.fit(
-    X_train, y_train, X_test, y_test, epochs=50, class_weights={0: 1, 1: 0.2, 2: 0.2}
-)
-
-plt.plot(history.history['loss'], label='train')
-plt.plot(history.history['val_loss'], label='test')
-plt.legend()
-plt.show()
-
-y_pred = model.predict(X_test)
-
-y_pred_1D, y_test_1D = flatten_idxmax_y(y_pred, y_test)
-ConfusionMatrix = confusion_matrix(y_test_1D, y_pred_1D)
-c = ConfusionMatrix.reshape(
-    1, ConfusionMatrix.shape[0], ConfusionMatrix.shape[1]
-)
-times = calc_time_until_deac(2, test_idx, y_pred_1D, deac_times)
-
-np.save(r'/home/james/Documents/DolleProject/Dolle/scripts', c)
 
 
 # model = Sequential()

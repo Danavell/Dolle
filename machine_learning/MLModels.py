@@ -92,23 +92,24 @@ class DolleLSTM(KerasBase):
             3, input_shape=input_shape, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)
         )
         self.model.add(LSTM(3, return_sequences=False))
-        self.model.add(Dense(output_shape, activation='softmax'))
+        self.model.add(Dense(output_shape, activation='sigmoid'))
 
         # fit network
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1, mode='min')
-        mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='val_loss', mode='min')
+        earlyStopping = EarlyStopping(monitor='loss', patience=20, verbose=1, mode='min')
+        mcp_save = ModelCheckpoint('.mdl_wts.hdf5', save_best_only=True, monitor='loss', mode='min')
         reduce_lr_loss = ReduceLROnPlateau(
-            monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
+            monitor='loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min'
         )
 
         if not class_weights:
             class_weights = {i: 1 for i in range(output_shape)}
 
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
+        val = (X_test, y_test) if X_train is not None and X_test is not None else None
         return self.model.fit(
             X_train, y_train, epochs=epochs, batch_size=32,
-            validation_data=(X_test, y_test), verbose=1,
+            validation_data=val, verbose=1,
             shuffle=False, callbacks=[
                 earlyStopping, mcp_save, reduce_lr_loss
             ],

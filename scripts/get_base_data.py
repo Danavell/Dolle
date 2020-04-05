@@ -1,13 +1,4 @@
-import os
-
-import numpy as np
-import pandas as pd
-
-import pre_processing.STATS_aggregate_0102.aggregates as ast_0102
-import pre_processing.STATS_aggregate_0102.business_intelligence as BI
-
 from pre_processing.utils import BaseDataFactory
-from pre_processing.aggregate_0102 import aggregates as ag
 
 BaseDataFactory.get_ladder_codes()
 # old_folder = '2020-01-06 04:44:58 - 2020-01-21 18:33:13'
@@ -16,9 +7,10 @@ BaseDataFactory.get_ladder_codes()
 #     1, old_folder, fix_duplicates=False, save=True
 # )
 
-new_folder = '28-02-16 to 2018-12-19'
+# new_folder = '28-02-16 to 2018-12-19'
+new_folder = 'new_data'
 new_data = BaseDataFactory.factory(
-    8, new_folder, fix_duplicates=True, save=True
+    8, new_folder, fix_duplicates=False, save=True
 )
 
 # a = data['sensor_data']

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from os.path import join
 from machine_learning import MLModels as m
 from machine_learning.PreProcess.PreProcess import process_data
 from machine_learning.STATS import ml_stats, confused
@@ -8,32 +9,42 @@ from machine_learning.STATS import ml_stats, confused
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
-aggregate_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-                 r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+BASE_DIR = r'C:\Development\DolleProject\dolle_csvs'
+DATE_FOLDER = r'28-02-16 to 2018-12-19'
+ML_FOLDER = r'MLAgg0103 1405 - 1 SW, 3 CF, no overlaps'
+DATA = r'SW-3D-3F-3B-12T.csv'
+S_DATA = r'sensor_data.csv'
+
+AGG_PATH = join(join(BASE_DIR, DATE_FOLDER), join(ML_FOLDER, DATA))
+SENSOR_PATH = join(join(BASE_DIR, DATE_FOLDER), join(ML_FOLDER, S_DATA))
 
 agg_cols_to_use = [
     'JOBNUM', 'Non Duplicate 0102', '0103 Pace',
-    '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time', 'Label'
+    '0104 Alarm Time', '0105 Alarm Time', '0106 Alarm Time', 'Downtime Label'
 ]
+agg = pd.read_csv(AGG_PATH, sep=',', usecols=agg_cols_to_use)
+if 'Downtime Label' in agg.columns and 'Label' not in agg.columns:
+    agg.rename(columns={'Downtime Label': 'Label'}, inplace=True)
 
-sensor_path = r'/home/james//Documents/DolleProject/dolle_csvs/28-02-16 to 2018-12-19' \
-              r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
-
-agg = pd.read_csv(aggregate_path, sep=',', usecols=agg_cols_to_use)
-sensor_data = pd.read_csv(sensor_path, sep=',', parse_dates=['Date'], infer_datetime_format=True)
+sensor_data = pd.read_csv(SENSOR_PATH, sep=',', parse_dates=['Date'], infer_datetime_format=True)
 
 num_rows = 4
 skip = 1
-catch = 1
+catch = 3
 method = 'multi'
 
 X_train, y_train, X_test, y_test, meta = process_data(
-    agg, num_rows=num_rows, skip=skip, catch=catch, split=0.8, method=method
+    agg,
+    num_rows=num_rows,
+    skip=skip,
+    catch=catch,
+    split=0.8,
+    method=method
 )
 
 model = m.DolleNeural1D()
 
-class_weights = {0: 1, 1: 0.7, 2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3, 6: 0.3}
+class_weights = { 0: 1, 1: 0.7, 2: 0.5, 3: 0.5 }
 history = model.fit(X_train, y_train, X_test=X_test, y_test=y_test, class_weights=class_weights)
 
 plt.plot(history.history['loss'], label='train')

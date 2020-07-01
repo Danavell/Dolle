@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from os.path import join
 from sklearn import metrics
 
 from scripts import pre_process_test as p
@@ -8,13 +9,15 @@ from machine_learning.MLModels import DolleLSTM, DolleNeural1D
 
 
 def paths(folder):
-    aggregate_path = rf'/home/james//Documents/DolleProject/dolle_csvs/{folder}' \
-                     r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/SW-3D-3F-3B-12T.csv'
+    BASE_DIR = r'C:\Development\DolleProject\dolle_csvs'
+    ML_FOLDER = r'MLAgg0103 1405 - 1 SW, 3 CF, no overlaps'
+    DATA = r'SW-3D-3F-3B-12T.csv'
+    S_DATA = r'sensor_data.csv'
 
-    sensor_path = rf'/home/james//Documents/DolleProject/dolle_csvs/{folder}' \
-                  r'/MLAgg0103 1405: 1 SW, 3 CF, no overlaps/sensor_data.csv'
-    return aggregate_path, sensor_path
-
+    DIR = join(BASE_DIR, folder)
+    AGG_PATH = join(DIR, join(ML_FOLDER, DATA))
+    SENSOR_PATH = join(DIR, join(ML_FOLDER, S_DATA))
+    return AGG_PATH, SENSOR_PATH
 
 # for _ in range(1):
 #     catch = 2
@@ -66,7 +69,7 @@ for _ in range(1):
         balance_test=False,
         agg_path=aggregate_path,
         sensor_path=sensor_path,
-        three_d=True
+        three_d=False
     )
 
     deac_times = meta['deac_times']
@@ -74,7 +77,7 @@ for _ in range(1):
 
     model = DolleNeural1D()
     history = model.fit(
-        X_train, y_train, X_test, y_test, epochs=50, class_weights={0: 1, 1: 0.2}
+        X_train, y_train, X_test, y_test, epochs=50, class_weights={0: 1, 1: 0.6}
     )
 
     plt.plot(history.history['loss'], label='train')

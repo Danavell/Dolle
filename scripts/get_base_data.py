@@ -8,7 +8,7 @@ BaseDataFactory.get_ladder_codes()
 # )
 
 new_folder = '28-02-16 to 2018-12-19'
-# new_folder = 'new_data'
+# new_folder = 'new_data'x½
 new_data = BaseDataFactory.factory(
     8, new_folder, fix_duplicates=True, save=True
 )

@@ -85,9 +85,19 @@ def _pad_stack_sequences(x, rows, columns, three_d=True):
     return t.reshape(-1, rows, columns) if three_d else t
 
 
+def _index_X(X, idx):
+    length = len(X.shape)
+    if length == 3:
+        return X[idx, :, :]
+    elif length == 2:
+        return X[idx, :]
+    else:
+        raise ValueError('Unsupported number of dimensions passed')
+
+
 def _split_labels(X, y, i):
     idx = np.where(y == i)[0]
-    return X[idx, :, :], idx
+    return _index_X(X, idx), idx
 
 
 def _concat_y_orig_indices(dy, idx):
@@ -107,10 +117,9 @@ def _train_test_deacs(x, d_y, i):
     idx = np.random.choice(
         d_idx, d // 5, replace=False
     )
-
-    deacs = x[d_idx, :, :]
+    deacs = _index_X(x, idx)
     dX_train = np.delete(deacs, idx, axis=0)
-    dX_test = x[idx, :, :]
+    dX_test = _index_X(x, idx)
     dy_train = np.full((dX_train.shape[0], 1), i)
     dy_test = np.full((dX_test.shape[0], 1), i)
 
@@ -125,7 +134,7 @@ def _train_test_non_deacs(X):
         nd, nd // 5, replace=False
     )
     ndX_train = np.delete(X, idx, axis=0)
-    ndX_test = X[idx, :, :]
+    ndX_test = _index_X(X, idx)
     dy_train = np.zeros(
         ndX_train.shape[0]
     ).reshape(-1, 1)
@@ -161,7 +170,15 @@ def _upsample(ndX, dX, i, t_idx=None):
     idx = np.random.choice(
         ds, remainder, replace=False
     )
-    X = np.concatenate((X, dX[idx, :, :]), axis=0)
+    shape = len(X.shape)
+    if shape == 3:
+        dX = dX[idx, :, :]
+    elif shape == 2:
+        dX = dX[idx, :]
+    else:
+        raise ValueError()
+
+    X = np.concatenate((X, dX), axis=0)
     y = np.full((X.shape[0], 1), i)
     if isinstance(t_idx, pd.DataFrame):
         t_idx = t_idx.to_numpy()

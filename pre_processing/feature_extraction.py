@@ -311,6 +311,12 @@ class MLFeatureExtractor0103:
         sensor_data['0103 ID'] = make_column_arange_gte(
             sensor_data, 'Non Duplicate 0103', fillna_groupby_col='JOBNUM'
         )
+        
+        label = 'Downtime Label'
+        sensor_data[label] = 0
+        condition = (sensor_data['0103 ID'] > 0) & (sensor_data['0103 Pace'] > 90)
+        sensor_data.loc[condition, label] = 1
+        
         condition = sensor_data['Non Duplicate 0101'] == 1
         deacs = sensor_data[condition][['Non Duplicate 0101']].copy()
         deacs['0101 Group'] = np.arange(1, len(deacs.index) + 1)

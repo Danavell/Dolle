@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+from os.path import join
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, Dropout, LSTM
@@ -16,8 +17,11 @@ class KerasBase:
     def compile(self, output_shape):
         self._output_shape = output_shape
         self._early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
+
+        BASE_DIR = r'C:\Development\DolleProject\dolle_csvs'
+        DATE_FOLDER = r'28-02-16 to 2018-12-19'
         self._mcp_save = ModelCheckpoint(
-            r'/home/james/Documents/DolleProject/Dolle/machine_learning/mdl_wts.hdf5',
+            join(join(BASE_DIR, DATE_FOLDER), 'mdl_wts.hdf5'),
             save_best_only=True, monitor='val_loss', mode='min'
         )
         self._reduce_lr_loss = ReduceLROnPlateau(

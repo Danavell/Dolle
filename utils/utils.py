@@ -3,6 +3,8 @@ import os
 import numpy as np
 import pandas as pd
 
+from os.path import join, exists, basename
+
 from utils.load_data import load_csv
 from utils.sensor_data import data_preparation as sd
 from utils.work_table import data_preparation as wt
@@ -35,48 +37,48 @@ class CSVReadWriter:
         self.folder = folder
         self.stats_folder = None
 
-        self._dir = os.path.join(get_csv_directory(), self.folder)
+        self._dir = join(get_csv_directory(), self.folder)
         self._columns = columns
         self._category = category
-        self._cat_directory = os.path.join(self._dir, self._category)
-        self._sensor_path = os.path.join(self._cat_directory, 'sensor_data.csv')
-        self._work_table_pat = os.path.join(self._cat_directory, 'work_table.csv')
+        self._cat_directory = join(self._dir, self._category)
+        self._sensor_path = join(self._cat_directory, 'sensor_data.csv')
+        self._work_table_pat = join(self._cat_directory, 'work_table.csv')
 
     def read_raw_sensor_data(self):
         return pd.read_csv(
-            os.path.join(self._dir, 'sensor_data.csv'), sep=',', parse_dates=['Date'], infer_datetime_format=True
+            join(self._dir, 'sensor_data.csv'), sep=',', parse_dates=['Date'], infer_datetime_format=True
         )
 
     def read_sensor_data(self):
         return pd.read_csv(self._sensor_path, sep=',')
 
     def read_raw_work_table(self):
-        return load_csv.read_work_table(os.path.join(self._dir, 'work_table.csv'), columns=self._columns)
+        return load_csv.read_work_table(join(self._dir, 'work_table.csv'), columns=self._columns)
 
     def read_work_table(self):
         return pd.read_csv(self._work_table_pat, sep=',')
 
     def check_stats_exist(self):
-        stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
+        stats_path = join(self._dir, f'{self.stats_folder}/agg_stats.csv')
         return os.path.exists(stats_path)
 
     def read_agg_stats(self):
-        stats_path = os.path.join(self._dir, f'{self.stats_folder}/agg_stats.csv')
+        stats_path = join(self._dir, f'{self.stats_folder}/agg_stats.csv')
         return pd.read_csv(stats_path, sep=',')
 
     def save(self, data):
-        if not os.path.exists(self._cat_directory):
+        if not exists(self._cat_directory):
             os.mkdir(self._cat_directory)
             for key in data.keys():
                 if isinstance(data[key], pd.DataFrame):
-                    path = os.path.join(self._cat_directory, f"{key.replace('/', '-')}.csv")
+                    path = join(self._cat_directory, f"{key.replace('/', '-')}.csv")
                     data[key].to_csv(path, sep=',', index=False)
                 if isinstance(data[key], dict):
-                    path = os.path.join(self._cat_directory, key)
+                    path = join(self._cat_directory, key)
                     if not os.path.exists(path):
                         os.mkdir(path)
                         for new_key in data[key].keys():
-                            new_path = os.path.join(path, f"{new_key.replace('/', '-')}.csv")
+                            new_path = join(path, f"{new_key.replace('/', '-')}.csv")
                             data[key][new_key].to_csv(new_path, sep=',', index=False)
         else:
             raise Exception('DIRECTORY ALREADY EXISTS')
@@ -115,11 +117,10 @@ def get_csv_directory():
     path = os.getcwd()
     while True:
         path = os.path.dirname(path)
-        last = path.split('/')[-1].lower()
-        if last == 'dolle':
+        if basename(path).lower() == 'dolle':
             path = os.path.dirname(path)
-            path = os.path.join(path, 'dolle_csvs')
-            if not os.path.exists(path):
+            path = join(path, 'dolle_csvs')
+            if not exists(path):
                 os.mkdir(path)
             break
     return path
@@ -272,5 +273,6 @@ class Machine1405:
 
 def merge(first, second):
     return [item for sublist in [first, second] for item in sublist]
+
 
 

@@ -7,7 +7,7 @@ stats_1405 = 'Stats 1405: all ladders, no overlaps'
 pace_0102_gte_n = 25
 
 settings = {
-    'Stats 1405: all ladders, no overlaps': {
+    'Stats 1405 - all ladders, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -18,7 +18,7 @@ settings = {
             'stats': True
         }
     },
-    'TEMP: 0102, 1 SW, 2 CF, no overlaps': {
+    'TEMP - 0102, 1 SW, 2 CF, no overlaps': {
          'machine': ut.Machine1405,
          'base_data': ut.BaseData,
          'remove_overlaps': wt.remove_all_overlaps,
@@ -27,7 +27,7 @@ settings = {
          'sd_cleaner': sd.SensorDataCleaner1405,
          'meta': {}
      },
-     'Stats 1405: 0102, 1 SW, 2 CF, no overlaps': {
+     'Stats 1405 - 0102, 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -39,7 +39,7 @@ settings = {
             'n': pace_0102_gte_n,
         }
     },
-    'Stats 1405: 0102, 1 SW, 3 CF, no overlaps': {
+    'Stats 1405 - 0102, 1 SW, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -51,7 +51,7 @@ settings = {
             'n': pace_0102_gte_n,
         }
     },
-    'Stats 1405: 0102, 3 CF, no overlaps': {
+    'Stats 1405 - 0102, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -63,7 +63,7 @@ settings = {
             'n': pace_0102_gte_n,
         }
     },
-    'MLAgg0103 1405: 1 SW, no overlaps': {
+    'MLAgg0103 1405 - 1 SW, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -74,7 +74,7 @@ settings = {
             'jams': 20,
         }
     },
-    'MLAgg0103 1405: 1 SW, 2 CF, no overlaps': {
+    'MLAgg0103 1405 - 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -85,7 +85,7 @@ settings = {
             'jams': 20,
         }
     },
-    'MLAgg0103 1405: 1 SW, 3 CF, no overlaps': {
+    'MLAgg0103 1405 - 1 SW, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -96,7 +96,7 @@ settings = {
             'jams': 20,
         }
     },
-    'MLAgg0103 1405: 3 CF, no overlaps': {
+    'MLAgg0103 1405 - 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -107,7 +107,7 @@ settings = {
             'jams': 20
         }
     },
-    'BaseData 1405: 1 CF, no overlaps': {
+    'BaseData 1405 - 1 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -116,7 +116,7 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}
     },
-    'BaseData 1405: 1 SW, 2 CF, no overlaps': {
+    'BaseData 1405 - 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -125,7 +125,7 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}
     },
-    'BaseData 1405: 1 SW, 3 CF, no overlaps': {
+    'BaseData 1405 - 1 SW, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -134,7 +134,7 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}
     },
-    'BaseData 1405: all ladders, no overlaps': {
+    'BaseData 1405 - all ladders, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -143,7 +143,7 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}
     },
-    'BaseData 1405: 3 CF, no overlaps': {
+    'BaseData 1405 - 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -152,7 +152,7 @@ settings = {
         'sd_cleaner': sd.SensorDataCleaner1405,
         'meta': {}
     },
-    'OriginalData Cleaned 1405: 1 CF, no overlaps': {
+    'OriginalData Cleaned 1405 - 1 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -163,7 +163,7 @@ settings = {
             'base': True
         }
     },
-    'OriginalData Cleaned: 1 SW, no overlaps': {
+    'OriginalData Cleaned - 1 SW, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -174,7 +174,7 @@ settings = {
             'base': True
         }
     },
-    'OriginalData Cleaned: 1 SW, 2 CF, no overlaps': {
+    'OriginalData Cleaned - 1 SW, 2 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -185,7 +185,7 @@ settings = {
             'base': True
         }
     },
-    'OriginalData Cleaned: 1 SW, 3 CF, no overlaps': {
+    'OriginalData Cleaned - 1 SW, 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -196,7 +196,7 @@ settings = {
             'base': True
         }
     },
-    'OriginalData Cleaned: all ladders, no overlaps': {
+    'OriginalData Cleaned - all ladders, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -207,7 +207,7 @@ settings = {
             'base': True
         }
     },
-    'OriginalData Cleaned: 3 CF, no overlaps': {
+    'OriginalData Cleaned - 3 CF, no overlaps': {
         'machine': ut.Machine1405,
         'base_data': ut.BaseData,
         'remove_overlaps': wt.remove_all_overlaps,
@@ -217,7 +217,7 @@ settings = {
         'meta': {
             'base': True
         }
-    },
+    }
 }
 
 product_col_reg_ex = r'^[A-Z]{2}[-][1-9][A-Z][-][1-9][A-Z][-][1-9][A-Z][-][1-9]{2}[A-Z]$'

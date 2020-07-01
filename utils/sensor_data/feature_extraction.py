@@ -65,6 +65,21 @@ def calc_error_time(sensor_data, column, groupby_cols='JOBNUM'):
     return _to_seconds(sensor_data['Date'] - sensor_data['previous_Date'])
 
 
+def calc_rolling_time(sensor_data, groupby_cols='JOBNUM'):
+    if isinstance(groupby_cols, list):
+        col = '-'.join(groupby_cols)
+    elif isinstance(groupby_cols, str):
+        col = groupby_cols
+    else:
+        raise ValueError('value must either be list or string')
+
+    sensor_data['previous_Date'] = sensor_data.groupby(groupby_cols)['Date'].shift(1)
+    sensor_data['previous_Date'] = pd.to_datetime(sensor_data['previous_Date'])
+    sensor_data[f'{col}-time-diff'] = _to_seconds(sensor_data['Date'] - sensor_data['previous_Date'])
+    sensor_data[f'{col}-time-cumsum'] = sensor_data.groupby(groupby_cols)[f'{col}-time-diff'].cumsum()
+    return sensor_data
+
+
 def _to_seconds(times):
     return times.dt.total_seconds().fillna(0).astype(int)
 
